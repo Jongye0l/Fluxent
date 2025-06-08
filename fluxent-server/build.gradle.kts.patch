@@ -1,8 +1,8 @@
 --- a/paper-server/build.gradle.kts
 +++ b/paper-server/build.gradle.kts
-@@ -21,6 +_,17 @@
-     // macheOldPath = file("F:\\Projects\\PaperTooling\\mache\\versions\\1.21.4\\src\\main\\java")
-     // gitFilePatches = true
+@@ -24,6 +24,17 @@
+     minecraftVersion = providers.gradleProperty("mcVersion")
+     gitFilePatches = false
  
 +    val fluxent = forks.register("fluxent") {
 +        upstream.patchDir("paperServer") {
@@ -15,14 +15,13 @@
 +
 +    activeFork = fluxent
 +
-     spigot {
-         buildDataRef = "3edaf46ec1eed4115ce1b18d2846cded42577e42"
-         packageVersion = "v1_21_R3" // also needs to be updated in MappingEnvironment
-@@ -101,7 +_,20 @@
+     //updatingMinecraft {
+     //    oldPaperCommit = "f4f275519f7c1fbe9db173b7144a4fe81440e365"
+     //}
+@@ -107,8 +118,20 @@
+         }
      }
  }
- 
--val log4jPlugins = sourceSets.create("log4jPlugins")
 +sourceSets {
 +    main {
 +        java { srcDir("../paper-server/src/main/java") }
@@ -33,14 +32,15 @@
 +        resources { srcDir("../paper-server/src/test/resources") }
 +    }
 +}
-+
+ 
+-val log4jPlugins = sourceSets.create("log4jPlugins")
 +val log4jPlugins = sourceSets.create("log4jPlugins") {
 +    java { srcDir("../paper-server/src/log4jPlugins/java") }
 +}
  configurations.named(log4jPlugins.compileClasspathConfigurationName) {
      extendsFrom(configurations.compileClasspath.get())
  }
-@@ -119,7 +_,7 @@
+@@ -130,7 +153,7 @@
  }
  
  dependencies {

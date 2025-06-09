@@ -1,0 +1,395 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jongyeol <bcpjy1233@gmail.com>
+Date: Sun, 8 Jun 2025 21:42:18 +0900
+Subject: [PATCH] Refactor Tick Final
+
+
+diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
+index 59e8a5e1b35c81883c9b1ca00c6e55d77584d8cc..9774276c337768b6c3425bc63b6e247d0ade8520 100644
+--- a/net/minecraft/server/level/ServerChunkCache.java
++++ b/net/minecraft/server/level/ServerChunkCache.java
+@@ -55,7 +55,7 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
+ import net.minecraft.world.level.storage.LevelStorageSource;
+ import org.slf4j.Logger;
+ 
+-public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moonrise.patches.chunk_system.world.ChunkSystemServerChunkCache { // Paper - rewrite chunk system
++public final class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moonrise.patches.chunk_system.world.ChunkSystemServerChunkCache { // Paper - rewrite chunk system
+     private static final Logger LOGGER = LogUtils.getLogger();
+     private final DistanceManager distanceManager;
+     private final ServerLevel level;
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 816461fa459567aaadba40699549ad2d8d18f231..2a19aa059e00a620b2b25fddeb42744f0cf79164 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -165,7 +165,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
+ import net.minecraft.world.ticks.LevelTicks;
+ import org.slf4j.Logger;
+ 
+-public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevelReader, ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickServerLevel { // Paper - rewrite chunk system // Paper - chunk tick iteration
++public final class ServerLevel extends Level implements ServerEntityGetter, WorldGenLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevelReader, ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickServerLevel { // Paper - rewrite chunk system // Paper - chunk tick iteration
+     public static final BlockPos END_SPAWN_POINT = new BlockPos(100, 50, 0);
+     public static final IntProvider RAIN_DELAY = UniformInt.of(12000, 180000);
+     public static final IntProvider RAIN_DURATION = UniformInt.of(12000, 24000);
+@@ -286,14 +286,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     // Paper end - optimise getPlayerByUUID
+     // Paper start - rewrite chunk system
+     private final ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader.ViewDistanceHolder viewDistanceHolder = new ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader.ViewDistanceHolder();
+-    private final ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader chunkLoader = new ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader((ServerLevel)(Object)this);
++    private final ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader chunkLoader = new ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader(this);
+     private final ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.EntityDataController entityDataController;
+     private final ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.PoiDataController poiDataController;
+     private final ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.ChunkDataController chunkDataController;
+     private final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler chunkTaskScheduler;
+     private long lastMidTickFailure;
+     private long tickedBlocksOrFluids;
+-    private final ca.spottedleaf.moonrise.common.misc.NearbyPlayers nearbyPlayers = new ca.spottedleaf.moonrise.common.misc.NearbyPlayers((ServerLevel)(Object)this);
++    private final ca.spottedleaf.moonrise.common.misc.NearbyPlayers nearbyPlayers = new ca.spottedleaf.moonrise.common.misc.NearbyPlayers(this);
+     private static final LevelChunk[] EMPTY_LEVEL_CHUNKS = new LevelChunk[0];
+     private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> loadedChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
+     private final ca.spottedleaf.moonrise.common.list.ReferenceList<LevelChunk> tickingChunks = new ca.spottedleaf.moonrise.common.list.ReferenceList<>(EMPTY_LEVEL_CHUNKS);
+@@ -325,7 +325,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+     @Override
+     public final void moonrise$midTickTasks() {
+-        ((ca.spottedleaf.moonrise.patches.chunk_system.server.ChunkSystemMinecraftServer)this.server).moonrise$executeMidTickTasks();
++        this.server.moonrise$executeMidTickTasks();
+     }
+ 
+     @Override
+@@ -515,7 +515,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+     @Override
+     public final void moonrise$addPlayerTickingRequest(final int chunkX, final int chunkZ) {
+-        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread((ServerLevel)(Object)this, chunkX, chunkZ, "Cannot add ticking request async");
++        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, chunkX, chunkZ, "Cannot add ticking request async");
+ 
+         final long chunkKey = ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkKey(chunkX, chunkZ);
+ 
+@@ -656,8 +656,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         this.gameEventDispatcher = new GameEventDispatcher(this);
+         this.randomSequences = Objects.requireNonNullElseGet(randomSequences, () -> this.getDataStorage().computeIfAbsent(RandomSequences.TYPE));
+         // Paper start - rewrite chunk system
+-        this.moonrise$setEntityLookup(new ca.spottedleaf.moonrise.patches.chunk_system.level.entity.server.ServerEntityLookup((ServerLevel)(Object)this, ((ServerLevel)(Object)this).new EntityCallbacks()));
+-        this.chunkTaskScheduler = new ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler((ServerLevel)(Object)this);
++        this.moonrise$setEntityLookup(new ca.spottedleaf.moonrise.patches.chunk_system.level.entity.server.ServerEntityLookup(this, this.new EntityCallbacks()));
++        this.chunkTaskScheduler = new ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkTaskScheduler(this);
+         this.entityDataController = new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.EntityDataController(
+             new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.EntityDataController.EntityRegionFileStorage(
+                 new RegionStorageInfo(levelStorageAccess.getLevelId(), dimension, "entities"),
+@@ -666,8 +666,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             ),
+             this.chunkTaskScheduler
+         );
+-        this.poiDataController = new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.PoiDataController((ServerLevel)(Object)this, this.chunkTaskScheduler);
+-        this.chunkDataController = new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.ChunkDataController((ServerLevel)(Object)this, this.chunkTaskScheduler);
++        this.poiDataController = new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.PoiDataController(this, this.chunkTaskScheduler);
++        this.chunkDataController = new ca.spottedleaf.moonrise.patches.chunk_system.io.datacontroller.ChunkDataController(this, this.chunkTaskScheduler);
+         // Paper end - rewrite chunk system
+         this.getCraftServer().addWorld(this.getWorld()); // CraftBukkit
+     }
+@@ -859,7 +859,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+ 
+     private void wakeUpAllPlayers() {
+         this.sleepStatus.removeAllSleepers();
+-        this.players.stream().filter(LivingEntity::isSleeping).collect(Collectors.toList()).forEach(player -> player.stopSleepInBed(false, false));
++        // fluxent start - optimize for loop
++        for(ServerPlayer player : players) {
++            if(player.isSleeping()) {
++                player.stopSleepInBed(false, false);
++            }
++        }
++        // fluxent end - optimize for loop
+     }
+ 
+     // Paper start - optimise random ticking
+@@ -900,11 +906,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                 // do not use a mutable pos, as some random tick implementations store the input without calling immutable()!
+                 final BlockPos pos = new BlockPos((location & 15) | offsetX, ((location >>> (4 + 4)) & 15) | offsetY, ((location >>> 4) & 15) | offsetZ);
+ 
+-                state.randomTick((ServerLevel)(Object)this, pos, simpleRandom);
++                state.randomTick(this, pos, simpleRandom);
+                 if (doubleTickFluids) {
+                     final FluidState fluidState = state.getFluidState();
+                     if (fluidState.isRandomlyTicking()) {
+-                        fluidState.randomTick((ServerLevel)(Object)this, pos, simpleRandom);
++                        fluidState.randomTick(this, pos, simpleRandom);
+                     }
+                 }
+             }
+diff --git a/net/minecraft/server/players/SleepStatus.java b/net/minecraft/server/players/SleepStatus.java
+index 2a7ae521654ad5c9f392baa5562e64bb71b13097..ff114230c93fe606519d8043b7fe8fc06473bf6d 100644
+--- a/net/minecraft/server/players/SleepStatus.java
++++ b/net/minecraft/server/players/SleepStatus.java
+@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.util.Mth;
+ import net.minecraft.world.entity.player.Player;
+ 
+-public class SleepStatus {
++public final class SleepStatus {
+     private int activePlayers;
+     private int sleepingPlayers;
+ 
+diff --git a/net/minecraft/world/TickRateManager.java b/net/minecraft/world/TickRateManager.java
+index 3dfda3c4f6554304f659079bd83a8a892af87038..98c9e7e39e30354cb6fc4aea6232e15a17d58064 100644
+--- a/net/minecraft/world/TickRateManager.java
++++ b/net/minecraft/world/TickRateManager.java
+@@ -29,7 +29,7 @@ public class TickRateManager {
+         return this.nanosecondsPerTick;
+     }
+ 
+-    public boolean runsNormally() {
++    public final boolean runsNormally() {
+         return this.runGameElements;
+     }
+ 
+diff --git a/net/minecraft/world/entity/ai/goal/GoalSelector.java b/net/minecraft/world/entity/ai/goal/GoalSelector.java
+index a927c2790c8ab9ccaa7161b970e10b0b44817dd8..43323c494f0aad3a8270e5ebe3fbe171b0c0e8fb 100644
+--- a/net/minecraft/world/entity/ai/goal/GoalSelector.java
++++ b/net/minecraft/world/entity/ai/goal/GoalSelector.java
+@@ -10,7 +10,7 @@ import java.util.function.Predicate;
+ import net.minecraft.util.profiling.Profiler;
+ import net.minecraft.util.profiling.ProfilerFiller;
+ 
+-public class GoalSelector {
++public final class GoalSelector {
+     private static final WrappedGoal NO_GOAL = new WrappedGoal(Integer.MAX_VALUE, new Goal() {
+         @Override
+         public boolean canUse() {
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index 2046c4d3ad5ea3254ad6bc83e6437e5c237c92b6..827216ff298679b040008857b1cf54fb064b5621 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -1487,8 +1487,8 @@ public abstract class Player extends LivingEntity {
+ 
+     public void stopSleepInBed(boolean wakeImmediately, boolean updateLevelForSleepingPlayers) {
+         super.stopSleeping();
+-        if (this.level() instanceof ServerLevel && updateLevelForSleepingPlayers) {
+-            ((ServerLevel)this.level()).updateSleepingPlayerList();
++        if (this.level() instanceof ServerLevel serverLevel && updateLevelForSleepingPlayers) {
++            serverLevel.updateSleepingPlayerList();
+         }
+ 
+         this.sleepCounter = wakeImmediately ? 0 : 100;
+diff --git a/net/minecraft/world/level/GameRules.java b/net/minecraft/world/level/GameRules.java
+index 02bc5d83b92a594ec519f0a02b0517fdb4b9e954..6e7c31afc47cd74de0d99dc38cb55b71e3292327 100644
+--- a/net/minecraft/world/level/GameRules.java
++++ b/net/minecraft/world/level/GameRules.java
+@@ -33,7 +33,7 @@ import net.minecraft.world.flag.FeatureFlagSet;
+ import net.minecraft.world.flag.FeatureFlags;
+ import org.slf4j.Logger;
+ 
+-public class GameRules {
++public final class GameRules {
+     // Paper start - allow disabling gamerule limits
+     private static final boolean DISABLE_LIMITS = Boolean.getBoolean("paper.disableGameRuleLimits");
+ 
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 418d3958b7510d469142178f9427c829b6387d83..4e7c2c2aa3421d5b5b0a5ee16ae90827b0061584 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -1442,7 +1442,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         (this.tickingBlockEntities ? this.pendingBlockEntityTickers : this.blockEntityTickers).add(ticker);
+     }
+ 
+-    protected void tickBlockEntities() {
++    protected final void tickBlockEntities() {
+         ProfilerFiller profilerFiller = Profiler.get();
+         profilerFiller.push("blockEntities");
+         this.tickingBlockEntities = true;
+@@ -1478,7 +1478,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         this.spigotConfig.currentPrimedTnt = 0; // Spigot
+     }
+ 
+-    public <T extends Entity> void guardEntityTick(Consumer<T> consumerEntity, T entity) {
++    public final <T extends Entity> void guardEntityTick(Consumer<T> consumerEntity, T entity) {
+         try {
+             consumerEntity.accept(entity);
+         } catch (Throwable var6) {
+diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
+index ae3e6e31171b1bcfba1ae51a0941b52dda270acd..d0074b398730194eda08e8acd9b398ee08fba624 100644
+--- a/net/minecraft/world/level/block/Block.java
++++ b/net/minecraft/world/level/block/Block.java
+@@ -305,7 +305,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+     }
+ 
+     public static boolean isShapeFullBlock(VoxelShape shape) {
+-        return ((ca.spottedleaf.moonrise.patches.collisions.shape.CollisionVoxelShape)shape).moonrise$isFullBlock(); // Paper - optimise collisions
++        return shape.moonrise$isFullBlock(); // Paper - optimise collisions
+     }
+ 
+     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+@@ -362,9 +362,9 @@ public class Block extends BlockBehaviour implements ItemLike {
+     }
+ 
+     public static void dropResources(BlockState state, LevelAccessor level, BlockPos pos, @Nullable BlockEntity blockEntity) {
+-        if (level instanceof ServerLevel) {
+-            getDrops(state, (ServerLevel)level, pos, blockEntity).forEach(stack -> popResource((ServerLevel)level, pos, stack));
+-            state.spawnAfterBreak((ServerLevel)level, pos, ItemStack.EMPTY, true);
++        if (level instanceof ServerLevel serverLevel) {
++            for(ItemStack stack : getDrops(state, serverLevel, pos, blockEntity)) popResource(serverLevel, pos, stack);
++            state.spawnAfterBreak(serverLevel, pos, ItemStack.EMPTY, true);
+         }
+     }
+ 
+@@ -374,9 +374,9 @@ public class Block extends BlockBehaviour implements ItemLike {
+     }
+     public static void dropResources(BlockState state, Level level, BlockPos pos, @Nullable BlockEntity blockEntity, @Nullable Entity entity, ItemStack tool, boolean dropExperience) {
+     // Paper end - Properly handle xp dropping
+-        if (level instanceof ServerLevel) {
+-            getDrops(state, (ServerLevel)level, pos, blockEntity, entity, tool).forEach(stack -> popResource(level, pos, stack));
+-            state.spawnAfterBreak((ServerLevel)level, pos, tool, dropExperience); // Paper - Properly handle xp dropping
++        if (level instanceof ServerLevel serverLevel) {
++            for(ItemStack stack : getDrops(state, serverLevel, pos, blockEntity))popResource(level, pos, stack);
++            state.spawnAfterBreak(serverLevel, pos, tool, dropExperience); // Paper - Properly handle xp dropping
+         }
+     }
+ 
+@@ -417,12 +417,12 @@ public class Block extends BlockBehaviour implements ItemLike {
+         }
+     }
+ 
+-    public void popExperience(ServerLevel level, BlockPos pos, int amount) {
++    public final void popExperience(ServerLevel level, BlockPos pos, int amount) {
+         // Paper start - add entity parameter
+         popExperience(level, pos, amount, null);
+     }
+ 
+-    public void popExperience(ServerLevel level, BlockPos pos, int amount, @Nullable net.minecraft.world.entity.Entity entity) {
++    public final void popExperience(ServerLevel level, BlockPos pos, int amount, @Nullable net.minecraft.world.entity.Entity entity) {
+         // Paper end - add entity parameter
+         if (level.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
+             ExperienceOrb.award(level, Vec3.atCenterOf(pos), amount, org.bukkit.entity.ExperienceOrb.SpawnReason.BLOCK_BREAK, entity); // Paper
+@@ -466,7 +466,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+         return !state.isSolid() && !state.liquid();
+     }
+ 
+-    public MutableComponent getName() {
++    public final MutableComponent getName() {
+         return Component.translatable(this.getDescriptionId());
+     }
+ 
+@@ -478,15 +478,15 @@ public class Block extends BlockBehaviour implements ItemLike {
+         entity.setDeltaMovement(entity.getDeltaMovement().multiply(1.0, 0.0, 1.0));
+     }
+ 
+-    public float getFriction() {
++    public final float getFriction() {
+         return this.friction;
+     }
+ 
+-    public float getSpeedFactor() {
++    public final float getSpeedFactor() {
+         return this.speedFactor;
+     }
+ 
+-    public float getJumpFactor() {
++    public final float getJumpFactor() {
+         return this.jumpFactor;
+     }
+ 
+@@ -514,7 +514,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+     }
+ 
+-    public StateDefinition<Block, BlockState> getStateDefinition() {
++    public final StateDefinition<Block, BlockState> getStateDefinition() {
+         return this.stateDefinition;
+     }
+ 
+@@ -543,7 +543,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+     }
+ 
+     @Override
+-    public Item asItem() {
++    public final Item asItem() {
+         if (this.item == null) {
+             this.item = Item.byBlock(this);
+         }
+@@ -551,25 +551,25 @@ public class Block extends BlockBehaviour implements ItemLike {
+         return this.item;
+     }
+ 
+-    public boolean hasDynamicShape() {
++    public final boolean hasDynamicShape() {
+         return this.dynamicShape;
+     }
+ 
+     @Override
+-    public String toString() {
++    public final String toString() {
+         return "Block{" + BuiltInRegistries.BLOCK.wrapAsHolder(this).getRegisteredName() + "}";
+     }
+ 
+     @Override
+-    protected Block asBlock() {
++    protected final Block asBlock() {
+         return this;
+     }
+ 
+-    protected Function<BlockState, VoxelShape> getShapeForEachState(Function<BlockState, VoxelShape> shapeGetter) {
++    protected final Function<BlockState, VoxelShape> getShapeForEachState(Function<BlockState, VoxelShape> shapeGetter) {
+         return this.stateDefinition.getPossibleStates().stream().collect(ImmutableMap.toImmutableMap(Function.identity(), shapeGetter))::get;
+     }
+ 
+-    protected Function<BlockState, VoxelShape> getShapeForEachState(Function<BlockState, VoxelShape> shapeGetter, Property<?>... properties) {
++    protected final Function<BlockState, VoxelShape> getShapeForEachState(Function<BlockState, VoxelShape> shapeGetter, Property<?>... properties) {
+         Map<? extends Property<?>, Object> map = Arrays.stream(properties)
+             .collect(Collectors.toMap(property -> property, property -> property.getPossibleValues().getFirst()));
+         ImmutableMap<BlockState, VoxelShape> map1 = this.stateDefinition
+@@ -595,7 +595,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+         return this.builtInRegistryHolder;
+     }
+ 
+-    protected int tryDropExperience(ServerLevel level, BlockPos pos, ItemStack heldItem, IntProvider amount) { // CraftBukkit
++    protected final int tryDropExperience(ServerLevel level, BlockPos pos, ItemStack heldItem, IntProvider amount) { // CraftBukkit
+         int i = EnchantmentHelper.processBlockExperience(level, heldItem, amount.sample(level.getRandom()));
+         if (i > 0) {
+             // CraftBukkit start
+diff --git a/net/minecraft/world/level/storage/DerivedLevelData.java b/net/minecraft/world/level/storage/DerivedLevelData.java
+index ebd5e89c55ebb89c2afe14cc9c37155c1fb00414..1ad17b4a8f979295e78111554a174b790dfdb9f5 100644
+--- a/net/minecraft/world/level/storage/DerivedLevelData.java
++++ b/net/minecraft/world/level/storage/DerivedLevelData.java
+@@ -36,7 +36,7 @@ public class DerivedLevelData implements ServerLevelData {
+     }
+ 
+     @Override
+-    public long getDayTime() {
++    public final long getDayTime() {
+         return this.wrapped.getDayTime();
+     }
+ 
+diff --git a/net/minecraft/world/level/storage/PrimaryLevelData.java b/net/minecraft/world/level/storage/PrimaryLevelData.java
+index c1aaf2843f5402bcb82c40d1d833f149c379cf8f..37fc239aac42a00bf98aeb8e5c10370e8dc12a7a 100644
+--- a/net/minecraft/world/level/storage/PrimaryLevelData.java
++++ b/net/minecraft/world/level/storage/PrimaryLevelData.java
+@@ -38,7 +38,7 @@ import net.minecraft.world.level.timers.TimerCallbacks;
+ import net.minecraft.world.level.timers.TimerQueue;
+ import org.slf4j.Logger;
+ 
+-public class PrimaryLevelData implements ServerLevelData, WorldData {
++public final class PrimaryLevelData implements ServerLevelData, WorldData {
+     private static final Logger LOGGER = LogUtils.getLogger();
+     public static final String LEVEL_NAME = "LevelName";
+     protected static final String PLAYER = "Player";
+@@ -317,7 +317,7 @@ public class PrimaryLevelData implements ServerLevelData, WorldData {
+     }
+ 
+     @Override
+-    public long getDayTime() {
++    public final long getDayTime() {
+         return this.dayTime;
+     }
+ 
+diff --git a/net/minecraft/world/ticks/LevelTicks.java b/net/minecraft/world/ticks/LevelTicks.java
+index 66abc2e7adee60fa98eed1ba36e018814fd02cad..45444a9bb1cd4802cc05da1572760a2b0643882d 100644
+--- a/net/minecraft/world/ticks/LevelTicks.java
++++ b/net/minecraft/world/ticks/LevelTicks.java
+@@ -28,7 +28,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.levelgen.structure.BoundingBox;
+ 
+-public class LevelTicks<T> implements LevelTickAccess<T> {
++public final class LevelTicks<T> implements LevelTickAccess<T> {
+     private static final Comparator<LevelChunkTicks<?>> CONTAINER_DRAIN_ORDER = (levelChunkTicks, levelChunkTicks1) -> ScheduledTick.INTRA_TICK_DRAIN_ORDER
+         .compare(levelChunkTicks.peek(), levelChunkTicks1.peek());
+     private final LongPredicate tickCheck;

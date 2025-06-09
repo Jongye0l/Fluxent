@@ -1,0 +1,108 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jongyeol <bcpjy1233@gmail.com>
+Date: Sun, 8 Jun 2025 20:16:52 +0900
+Subject: [PATCH] Entity Tick Optimize
+
+
+diff --git a/io/papermc/paper/entity/activation/ActivationRange.java b/io/papermc/paper/entity/activation/ActivationRange.java
+index 2ebee223085fe7926c7f3e555df19ae69f36157e..8c608b42ff9d9a0f385a3aa6ac09088377edfba0 100644
+--- a/io/papermc/paper/entity/activation/ActivationRange.java
++++ b/io/papermc/paper/entity/activation/ActivationRange.java
+@@ -115,29 +115,26 @@ public final class ActivationRange {
+      * @param world
+      */
+     public static void activateEntities(final Level world) {
+-        final int miscActivationRange = world.spigotConfig.miscActivationRange;
+-        final int raiderActivationRange = world.spigotConfig.raiderActivationRange;
+-        final int animalActivationRange = world.spigotConfig.animalActivationRange;
+-        final int monsterActivationRange = world.spigotConfig.monsterActivationRange;
+-        final int waterActivationRange = world.spigotConfig.waterActivationRange;
+-        final int flyingActivationRange = world.spigotConfig.flyingMonsterActivationRange;
+-        final int villagerActivationRange = world.spigotConfig.villagerActivationRange;
+-        world.wakeupInactiveRemainingAnimals = Math.min(world.wakeupInactiveRemainingAnimals + 1, world.spigotConfig.wakeUpInactiveAnimals);
+-        world.wakeupInactiveRemainingVillagers = Math.min(world.wakeupInactiveRemainingVillagers + 1, world.spigotConfig.wakeUpInactiveVillagers);
+-        world.wakeupInactiveRemainingMonsters = Math.min(world.wakeupInactiveRemainingMonsters + 1, world.spigotConfig.wakeUpInactiveMonsters);
+-        world.wakeupInactiveRemainingFlying = Math.min(world.wakeupInactiveRemainingFlying + 1, world.spigotConfig.wakeUpInactiveFlying);
++        // fluxent start - entity level tick optimize
++        final SpigotWorldConfig config = world.spigotConfig;
++        final int miscActivationRange = config.miscActivationRange;
++        final int raiderActivationRange = config.raiderActivationRange;
++        final int animalActivationRange = config.animalActivationRange;
++        final int monsterActivationRange = config.monsterActivationRange;
++        final int waterActivationRange = config.waterActivationRange;
++        final int flyingActivationRange = config.flyingMonsterActivationRange;
++        final int villagerActivationRange = config.villagerActivationRange;
++        world.wakeupInactiveRemainingAnimals = Math.min(world.wakeupInactiveRemainingAnimals + 1, config.wakeUpInactiveAnimals);
++        world.wakeupInactiveRemainingVillagers = Math.min(world.wakeupInactiveRemainingVillagers + 1, config.wakeUpInactiveVillagers);
++        world.wakeupInactiveRemainingMonsters = Math.min(world.wakeupInactiveRemainingMonsters + 1, config.wakeUpInactiveMonsters);
++        world.wakeupInactiveRemainingFlying = Math.min(world.wakeupInactiveRemainingFlying + 1, config.wakeUpInactiveFlying);
+ 
+-        int maxRange = Math.max(monsterActivationRange, animalActivationRange);
+-        maxRange = Math.max(maxRange, raiderActivationRange);
+-        maxRange = Math.max(maxRange, miscActivationRange);
+-        maxRange = Math.max(maxRange, flyingActivationRange);
+-        maxRange = Math.max(maxRange, waterActivationRange);
+-        maxRange = Math.max(maxRange, villagerActivationRange);
+-        maxRange = Math.min((world.spigotConfig.simulationDistance << 4) - 8, maxRange);
++        final int maxRange = config.entityMaxRange;
++        // fluxent end - entity level tick optimize
+ 
+         for (final Player player : world.players()) {
+             player.activatedTick = MinecraftServer.currentTick;
+-            if (world.spigotConfig.ignoreSpectatorActivation && player.isSpectator()) {
++            if (config.ignoreSpectatorActivation && player.isSpectator()) { // fluxent - entity level tick optimize
+                 continue;
+             }
+ 
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..816461fa459567aaadba40699549ad2d8d18f231 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -133,7 +133,6 @@ import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+ import net.minecraft.world.level.dimension.LevelStem;
+ import net.minecraft.world.level.dimension.end.EndDragonFight;
+ import net.minecraft.world.level.entity.EntityPersistentStorage;
+-import net.minecraft.world.level.entity.EntityTickList;
+ import net.minecraft.world.level.entity.EntityTypeTest;
+ import net.minecraft.world.level.entity.LevelCallback;
+ import net.minecraft.world.level.entity.LevelEntityGetter;
+@@ -180,7 +179,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+     private final MinecraftServer server;
+     public final net.minecraft.world.level.storage.PrimaryLevelData serverLevelData; // CraftBukkit - type
+     private int lastSpawnChunkRadius;
+-    final EntityTickList entityTickList = new EntityTickList();
++    final ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet<net.minecraft.world.entity.Entity> entityTickList = new ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet<>(); // fluxent - entity level tick optimize
+     // Paper - rewrite chunk system
+     private final GameEventDispatcher gameEventDispatcher;
+     public boolean noSave;
+@@ -785,9 +784,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+             }
+ 
+             io.papermc.paper.entity.activation.ActivationRange.activateEntities(this); // Paper - EAR
+-            this.entityTickList
+-                .forEach(
+-                    entity -> {
++            // fluxent start - entity level tick optimize
++            final ca.spottedleaf.moonrise.common.list.IteratorSafeOrderedReferenceSet.Iterator<Entity> iterator = this.entityTickList.iterator();
++            try {
++                while (iterator.hasNext()) {
++                    Entity entity = iterator.next();
++            // fluxent end - entity level tick optimize
+                         if (!entity.isRemoved()) {
+                             if (!tickRateManager.isEntityFrozen(entity)) {
+                                 profilerFiller.push("checkDespawn");
+@@ -809,8 +811,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                                 }
+                             }
+                         }
+-                    }
+-                );
++            // fluxent start - entity level tick optimize
++                }
++            } finally {
++                iterator.finishedIterating();
++            }
++            // fluxent end - entity level tick optimize
+             profilerFiller.pop();
+             this.tickBlockEntities();
+         }

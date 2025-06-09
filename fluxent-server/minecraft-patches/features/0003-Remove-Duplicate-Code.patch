@@ -1,0 +1,1272 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jongyeol <bcpjy1233@gmail.com>
+Date: Mon, 9 Jun 2025 20:42:40 +0900
+Subject: [PATCH] Remove Duplicate Code
+
+
+diff --git a/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java b/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
+index 975a2e4ea1f84e81fa3526395b43cb8157a06243..0c77422c571fc71f9cd975b5e3d35083abe1a8fa 100644
+--- a/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
++++ b/ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java
+@@ -116,12 +116,15 @@ public abstract class BaseChunkSystemHooks implements ca.spottedleaf.moonrise.co
+ 
+     @Override
+     public void onChunkTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getTickingChunks().add(chunk);
++        // fluxent start - remove duplicate code
++        ServerLevel serverLevel = (ServerLevel) chunk.getLevel();
++        ((ChunkSystemServerLevel)serverLevel).moonrise$getTickingChunks().add(chunk);
+         if (!((ChunkSystemLevelChunk)chunk).moonrise$isPostProcessingDone()) {
+-            chunk.postProcessGeneration((ServerLevel)chunk.getLevel());
++            chunk.postProcessGeneration(serverLevel);
+         }
+-        ((ServerLevel)chunk.getLevel()).startTickingChunk(chunk);
+-        ((ServerLevel)chunk.getLevel()).getChunkSource().chunkMap.tickingGenerated.incrementAndGet();
++        serverLevel.startTickingChunk(chunk);
++        serverLevel.getChunkSource().chunkMap.tickingGenerated.incrementAndGet();
++        // fluxent end - remove duplicate code
+     }
+ 
+     @Override
+@@ -131,14 +134,20 @@ public abstract class BaseChunkSystemHooks implements ca.spottedleaf.moonrise.co
+ 
+     @Override
+     public void onChunkEntityTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().add(chunk);
+-        ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$markChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // fluxent start - remove duplicate code
++        ServerLevel serverLevel = (ServerLevel) chunk.getLevel();
++        ((ChunkSystemServerLevel) serverLevel).moonrise$getEntityTickingChunks().add(chunk);
++        serverLevel.moonrise$markChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // fluxent end - remove duplicate code
+     }
+ 
+     @Override
+     public void onChunkNotEntityTicking(final LevelChunk chunk, final ChunkHolder holder) {
+-        ((ChunkSystemServerLevel)((ServerLevel)chunk.getLevel())).moonrise$getEntityTickingChunks().remove(chunk);
+-        ((ChunkTickServerLevel)(ServerLevel)chunk.getLevel()).moonrise$removeChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // fluxent start - remove duplicate code
++        ServerLevel serverLevel = (ServerLevel) chunk.getLevel();
++        ((ChunkSystemServerLevel) serverLevel).moonrise$getEntityTickingChunks().remove(chunk);
++        serverLevel.moonrise$removeChunkForPlayerTicking(chunk); // Moonrise - chunk tick iteration
++        // fluxent end - remove duplicate code
+     }
+ 
+     @Override
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index f1373fd5fdebb9f4600ba7f32a5df6188de3a0e9..b77153e10bd1aaddb01f1675fa58dca3e395cebb 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1177,7 +1177,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             // tasks are default scheduled at -1 + delay, and first tick will tick at 1
+             final long actualDoneTimeMs = System.currentTimeMillis() - org.bukkit.craftbukkit.Main.BOOT_TIME.toEpochMilli(); // Paper - Improve startup message
+             LOGGER.info("Done ({})! For help, type \"help\"", String.format(java.util.Locale.ROOT, "%.3fs", actualDoneTimeMs / 1000.00D)); // Paper - Improve startup message
+-            org.spigotmc.WatchdogThread.tick();
++            org.spigotmc.WatchdogThread.tick(System.nanoTime()); // fluxent - remove duplicate code
+             // Paper end
+             org.spigotmc.WatchdogThread.hasStarted = true; // Paper
+             Arrays.fill(this.recentTps, 20);
+@@ -1484,8 +1484,10 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     }
+ 
+     public void tickServer(BooleanSupplier hasTimeLeft) {
+-        org.spigotmc.WatchdogThread.tick(); // Spigot
++        // fluxent start - remove duplicate code
+         long nanos = Util.getNanos();
++        org.spigotmc.WatchdogThread.tick(nanos); // Spigot
++        // fluxent end - remove duplicate code
+         int i = this.pauseWhileEmptySeconds() * 20;
+         this.removeDisabledPluginsBlockingSleep(); // Paper - API to allow/disallow tick sleeping
+         if (i > 0) {
+diff --git a/net/minecraft/server/commands/RaidCommand.java b/net/minecraft/server/commands/RaidCommand.java
+index a40300ff8c63cbfb3bcd1109b6374d7fb6bcf4e9..5be44843f710e9ba87828a4d8293bcdb6ae20771 100644
+--- a/net/minecraft/server/commands/RaidCommand.java
++++ b/net/minecraft/server/commands/RaidCommand.java
+@@ -118,11 +118,12 @@ public class RaidCommand {
+     private static int start(CommandSourceStack source, int badOmenLevel) throws CommandSyntaxException {
+         ServerPlayer playerOrException = source.getPlayerOrException();
+         BlockPos blockPos = playerOrException.blockPosition();
+-        if (playerOrException.serverLevel().isRaided(blockPos)) {
++        ServerLevel serverLevel = playerOrException.serverLevel(); // fluxent - remove duplicate code
++        if (serverLevel.isRaided(blockPos)) { // fluxent - remove duplicate code
+             source.sendFailure(Component.literal("Raid already started close by"));
+             return -1;
+         } else {
+-            Raids raids = playerOrException.serverLevel().getRaids();
++            Raids raids = serverLevel.getRaids(); // fluxent - remove duplicate code
+             Raid raid = raids.createOrExtendRaid(playerOrException, playerOrException.blockPosition());
+             if (raid != null) {
+                 raid.setRaidOmenLevel(badOmenLevel);
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 2a19aa059e00a620b2b25fddeb42744f0cf79164..d4e5404c50bc47fb5103215b939b470a883fa2c2 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -524,7 +524,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+             return;
+         }
+ 
+-        final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder chunkHolder = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)(ServerLevel)(Object)this).moonrise$getChunkTaskScheduler()
++        final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder chunkHolder = moonrise$getChunkTaskScheduler() // fluxent - remove duplicate code
+             .chunkHolderManager.getChunkHolder(chunkKey);
+ 
+         if (chunkHolder == null || !chunkHolder.isTickingReady()) {
+@@ -536,7 +536,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+ 
+     @Override
+     public final void moonrise$removePlayerTickingRequest(final int chunkX, final int chunkZ) {
+-        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread((ServerLevel)(Object)this, chunkX, chunkZ, "Cannot remove ticking request async");
++        ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, chunkX, chunkZ, "Cannot remove ticking request async"); // fluxent - remove duplicate code
+ 
+         final long chunkKey = ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkKey(chunkX, chunkZ);
+         final int val = this.playerTickingRequests.addTo(chunkKey, -1);
+@@ -550,7 +550,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+             return;
+         }
+ 
+-        final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder chunkHolder = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)(ServerLevel)(Object)this).moonrise$getChunkTaskScheduler()
++        final ca.spottedleaf.moonrise.patches.chunk_system.scheduling.NewChunkHolder chunkHolder = moonrise$getChunkTaskScheduler() // fluxent - remove duplicate code
+             .chunkHolderManager.getChunkHolder(chunkKey);
+ 
+         if (chunkHolder == null || !chunkHolder.isTickingReady()) {
+@@ -873,7 +873,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+ 
+     private void optimiseRandomTick(final LevelChunk chunk, final int tickSpeed) {
+         final LevelChunkSection[] sections = chunk.getSections();
+-        final int minSection = ca.spottedleaf.moonrise.common.util.WorldUtil.getMinSection((ServerLevel)(Object)this);
++        final int minSection = ca.spottedleaf.moonrise.common.util.WorldUtil.getMinSection(this); // fluxent - remove duplicate code
+         final ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom simpleRandom = this.simpleRandom;
+         final boolean doubleTickFluids = !ca.spottedleaf.moonrise.common.PlatformHooks.get().configFixMC224294();
+ 
+@@ -2555,7 +2555,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+ 
+     // Paper start - respect global sound events gamerule
+     public List<net.minecraft.server.level.ServerPlayer> getPlayersForGlobalSoundGamerule() {
+-        return this.getGameRules().getBoolean(GameRules.RULE_GLOBAL_SOUND_EVENTS) ? ((ServerLevel) this).getServer().getPlayerList().players : ((ServerLevel) this).players();
++        return this.getGameRules().getBoolean(GameRules.RULE_GLOBAL_SOUND_EVENTS) ? this.getServer().getPlayerList().players : this.players(); // fluxent - remove duplicate code
+     }
+ 
+     public double getGlobalSoundRangeSquared(java.util.function.Function<org.spigotmc.SpigotWorldConfig, Integer> rangeFunction) {
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605c7aa813e 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -1011,13 +1011,14 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     @Override
+     public void die(DamageSource cause) {
+         // this.gameEvent(GameEvent.ENTITY_DIE); // Paper - move below event cancellation check
+-        boolean _boolean = this.serverLevel().getGameRules().getBoolean(GameRules.RULE_SHOWDEATHMESSAGES); final boolean showDeathMessage = _boolean; // Paper - OBFHELPER
++        ServerLevel serverLevel = this.serverLevel(); // fluxent - remove duplicate code
++        boolean _boolean = serverLevel.getGameRules().getBoolean(GameRules.RULE_SHOWDEATHMESSAGES); final boolean showDeathMessage = _boolean; // Paper - OBFHELPER // fluxent - remove duplicate code
+         // CraftBukkit start - fire PlayerDeathEvent
+         if (this.isRemoved()) {
+             return;
+         }
+         List<DefaultDrop> loot = new java.util.ArrayList<>(this.getInventory().getContainerSize()); // Paper - Restore vanilla drops behavior
+-        boolean keepInventory = this.serverLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY) || this.isSpectator();
++        boolean keepInventory = serverLevel.getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY) || this.isSpectator();  // fluxent - remove duplicate code
+         if (!keepInventory) {
+             for (ItemStack item : this.getInventory().getContents()) {
+                 if (!item.isEmpty() && !EnchantmentHelper.has(item, net.minecraft.world.item.enchantment.EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) {
+@@ -1025,9 +1026,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+                 }
+             }
+         }
+-        if (this.shouldDropLoot() && this.serverLevel().getGameRules().getBoolean(GameRules.RULE_DOMOBLOOT)) { // Paper - fix player loottables running when mob loot gamerule is false
++        if (this.shouldDropLoot() && serverLevel.getGameRules().getBoolean(GameRules.RULE_DOMOBLOOT)) { // Paper - fix player loottables running when mob loot gamerule is false // fluxent - remove duplicate code
+             // SPIGOT-5071: manually add player loot tables (SPIGOT-5195 - ignores keepInventory rule)
+-            this.dropFromLootTable(this.serverLevel(), cause, this.lastHurtByPlayerMemoryTime > 0);
++            this.dropFromLootTable(serverLevel, cause, this.lastHurtByPlayerMemoryTime > 0); // fluxent - remove duplicate code
+             // Paper - Restore vanilla drops behaviour; custom death loot is a noop on server player, remove.
+             loot.addAll(this.drops);
+             this.drops.clear(); // SPIGOT-5188: make sure to clear
+@@ -1075,12 +1076,12 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         }
+ 
+         this.removeEntitiesOnShoulder();
+-        if (this.serverLevel().getGameRules().getBoolean(GameRules.RULE_FORGIVE_DEAD_PLAYERS)) {
++        if (serverLevel.getGameRules().getBoolean(GameRules.RULE_FORGIVE_DEAD_PLAYERS)) { // fluxent - remove duplicate code
+             this.tellNeutralMobsThatIDied();
+         }
+ 
+         // SPIGOT-5478 must be called manually now
+-        if (event.shouldDropExperience()) this.dropExperience(this.serverLevel(), cause.getEntity()); // Paper - tie to event
++        if (event.shouldDropExperience()) this.dropExperience(serverLevel, cause.getEntity()); // Paper - tie to event // fluxent - remove duplicate code
+         // we clean the player's inventory after the EntityDeathEvent is called so plugins can get the exact state of the inventory.
+         if (!event.getKeepInventory()) {
+             // Paper start - PlayerDeathEvent#getItemsToKeep
+@@ -1107,7 +1108,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         this.setCamera(this); // Remove spectated target
+         // CraftBukkit end
+ 
+-        this.level().getCraftServer().getScoreboardManager().forAllObjectives(ObjectiveCriteria.DEATH_COUNT, this, ScoreAccess::increment); // CraftBukkit - Get our scores instead
++        serverLevel.getCraftServer().getScoreboardManager().forAllObjectives(ObjectiveCriteria.DEATH_COUNT, this, ScoreAccess::increment); // CraftBukkit - Get our scores instead // fluxent - remove duplicate code
+         LivingEntity killCredit = this.getKillCredit();
+         if (killCredit != null) {
+             this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
+@@ -1115,7 +1116,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+             this.createWitherRose(killCredit);
+         }
+ 
+-        this.level().broadcastEntityEvent(this, (byte)3);
++        serverLevel.broadcastEntityEvent(this, (byte)3); // fluxent - remove duplicate code
+         this.awardStat(Stats.DEATHS);
+         this.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_DEATH));
+         this.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_REST));
+@@ -1123,7 +1124,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         this.setTicksFrozen(0);
+         this.setSharedFlagOnFire(false);
+         this.getCombatTracker().recheckStatus();
+-        this.setLastDeathLocation(Optional.of(GlobalPos.of(this.level().dimension(), this.blockPosition())));
++        this.setLastDeathLocation(Optional.of(GlobalPos.of(serverLevel.dimension(), this.blockPosition()))); // fluxent - remove duplicate code
+         this.setClientLoaded(false);
+     }
+ 
+@@ -1327,8 +1328,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+             org.bukkit.Location exit = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(absolutePosition.position(), level.getWorld(), absolutePosition.yRot(), absolutePosition.xRot());
+             org.bukkit.event.player.PlayerTeleportEvent tpEvent = new org.bukkit.event.player.PlayerTeleportEvent(this.getBukkitEntity(), enter, exit.clone(), teleportTransition.cause());
+             // Paper start - gateway-specific teleport event
+-            if (this.portalProcess != null && this.portalProcess.isSamePortal(((net.minecraft.world.level.block.EndGatewayBlock) net.minecraft.world.level.block.Blocks.END_GATEWAY)) && this.serverLevel().getBlockEntity(this.portalProcess.getEntryPosition()) instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity theEndGatewayBlockEntity) {
+-                tpEvent = new com.destroystokyo.paper.event.player.PlayerTeleportEndGatewayEvent(this.getBukkitEntity(), enter, exit.clone(), new org.bukkit.craftbukkit.block.CraftEndGateway(this.serverLevel().getWorld(), theEndGatewayBlockEntity));
++            if (this.portalProcess != null && this.portalProcess.isSamePortal(((net.minecraft.world.level.block.EndGatewayBlock) net.minecraft.world.level.block.Blocks.END_GATEWAY)) && serverLevel.getBlockEntity(this.portalProcess.getEntryPosition()) instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity theEndGatewayBlockEntity) { // fluxent - remove duplicate code
++                tpEvent = new com.destroystokyo.paper.event.player.PlayerTeleportEndGatewayEvent(this.getBukkitEntity(), enter, exit.clone(), new org.bukkit.craftbukkit.block.CraftEndGateway(serverLevel.getWorld(), theEndGatewayBlockEntity)); // fluxent - remove duplicate code
+             }
+             // Paper end - gateway-specific teleport event
+             org.bukkit.Bukkit.getServer().getPluginManager().callEvent(tpEvent);
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 9041830c19e2899479e1519488faba5c416ccd88..3da2863c0206020e2ee2b8601ea7f5ba4e96430f 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -470,7 +470,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleMoveVehicle(ServerboundMoveVehiclePacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (containsInvalidValues(packet.position().x(), packet.position().y(), packet.position().z(), packet.yRot(), packet.xRot())) {
+             this.disconnect(Component.translatable("multiplayer.disconnect.invalid_vehicle_movement"), org.bukkit.event.player.PlayerKickEvent.Cause.INVALID_VEHICLE_MOVEMENT); // Paper - kick event cause
+         } else if (!this.updateAwaitingTeleport() && this.player.hasClientLoaded()) {
+@@ -481,7 +482,7 @@ public class ServerGamePacketListenerImpl
+             }
+             // Paper end - Don't allow vehicle movement from players while teleporting
+             if (rootVehicle != this.player && rootVehicle.getControllingPassenger() == this.player && rootVehicle == this.lastVehicle) {
+-                ServerLevel serverLevel = this.player.serverLevel();
++                // fluxent - remove duplicate code
+                 // CraftBukkit - store current player position
+                 double prevX = this.player.getX();
+                 double prevY = this.player.getY();
+@@ -538,7 +539,7 @@ public class ServerGamePacketListenerImpl
+                 speed *= 2f; // TODO: Get the speed of the vehicle instead of the player
+ 
+                 // Paper start - Prevent moving into unloaded chunks
+-                if (this.player.level().paperConfig().chunks.preventMovingIntoUnloadedChunks && (
++                if (serverLevel.paperConfig().chunks.preventMovingIntoUnloadedChunks && ( // fluxent - remove duplicate code
+                     !serverLevel.areChunksLoadedForMove(this.player.getBoundingBox().expandTowards(new Vec3(toX, toY, toZ).subtract(this.player.position()))) ||
+                         !serverLevel.areChunksLoadedForMove(rootVehicle.getBoundingBox().expandTowards(new Vec3(toX, toY, toZ).subtract(rootVehicle.position())))
+                 )) {
+@@ -651,7 +652,7 @@ public class ServerGamePacketListenerImpl
+                 }
+                 // CraftBukkit end
+ 
+-                this.player.serverLevel().getChunkSource().move(this.player);
++                serverLevel.getChunkSource().move(this.player); // fluxent - remove duplicate code
+                 Vec3 vec3 = new Vec3(rootVehicle.getX() - x, rootVehicle.getY() - y, rootVehicle.getZ() - z);
+                 this.handlePlayerKnownMovement(vec3);
+                 rootVehicle.setOnGroundWithMovement(packet.onGround(), vec3);
+@@ -700,7 +701,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleAcceptTeleportPacket(ServerboundAcceptTeleportationPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (packet.getId() == this.awaitingTeleport) {
+             if (this.awaitingPositionFromClient == null) {
+                 this.disconnect(Component.translatable("multiplayer.disconnect.invalid_player_movement"), org.bukkit.event.player.PlayerKickEvent.Cause.INVALID_PLAYER_MOVEMENT); // Paper - kick event cause
+@@ -720,7 +722,7 @@ public class ServerGamePacketListenerImpl
+             this.lastGoodZ = this.awaitingPositionFromClient.z;
+             this.player.hasChangedDimension();
+             this.awaitingPositionFromClient = null;
+-            this.player.serverLevel().getChunkSource().move(this.player); // CraftBukkit
++            serverLevel.getChunkSource().move(this.player); // CraftBukkit // fluxent - remove duplicate code
+         }
+     }
+ 
+@@ -881,7 +883,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleSetCommandBlock(ServerboundSetCommandBlockPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (!this.server.isCommandBlockEnabled()) {
+             this.player.sendSystemMessage(Component.translatable("advMode.notEnabled"));
+         } else if (!this.player.canUseGameMasterBlocks() && (!this.player.isCreative() || !this.player.getBukkitEntity().hasPermission("minecraft.commandblock"))) { // Paper - command block permission
+@@ -890,7 +893,7 @@ public class ServerGamePacketListenerImpl
+             BaseCommandBlock baseCommandBlock = null;
+             CommandBlockEntity commandBlockEntity = null;
+             BlockPos pos = packet.getPos();
+-            BlockEntity blockEntity = this.player.level().getBlockEntity(pos);
++            BlockEntity blockEntity = serverLevel.getBlockEntity(pos); // fluxent - remove duplicate code
+             if (blockEntity instanceof CommandBlockEntity) {
+                 commandBlockEntity = (CommandBlockEntity)blockEntity;
+                 baseCommandBlock = commandBlockEntity.getCommandBlock();
+@@ -900,7 +903,7 @@ public class ServerGamePacketListenerImpl
+             boolean isTrackOutput = packet.isTrackOutput();
+             if (baseCommandBlock != null) {
+                 CommandBlockEntity.Mode mode = commandBlockEntity.getMode();
+-                BlockState blockState = this.player.level().getBlockState(pos);
++                BlockState blockState = serverLevel.getBlockState(pos); // fluxent - remove duplicate code
+                 Direction direction = blockState.getValue(CommandBlock.FACING);
+ 
+                 BlockState blockState1 = switch (packet.getMode()) {
+@@ -910,9 +913,9 @@ public class ServerGamePacketListenerImpl
+                 };
+                 BlockState blockState2 = blockState1.setValue(CommandBlock.FACING, direction).setValue(CommandBlock.CONDITIONAL, packet.isConditional());
+                 if (blockState2 != blockState) {
+-                    this.player.level().setBlock(pos, blockState2, 2);
++                    serverLevel.setBlock(pos, blockState2, 2); // fluxent - remove duplicate code
+                     blockEntity.setBlockState(blockState2);
+-                    this.player.level().getChunkAt(pos).setBlockEntity(blockEntity);
++                    serverLevel.getChunkAt(pos).setBlockEntity(blockEntity); // fluxent - remove duplicate code
+                 }
+ 
+                 baseCommandBlock.setCommand(command);
+@@ -936,13 +939,14 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleSetCommandMinecart(ServerboundSetCommandMinecartPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (!this.server.isCommandBlockEnabled()) {
+             this.player.sendSystemMessage(Component.translatable("advMode.notEnabled"));
+         } else if (!this.player.canUseGameMasterBlocks() && (!this.player.isCreative() || !this.player.getBukkitEntity().hasPermission("minecraft.commandblock"))) { // Paper - command block permission
+             this.player.sendSystemMessage(Component.translatable("advMode.notAllowed"));
+         } else {
+-            BaseCommandBlock commandBlock = packet.getCommandBlock(this.player.level());
++            BaseCommandBlock commandBlock = packet.getCommandBlock(serverLevel); // fluxent - remove duplicate code
+             if (commandBlock != null) {
+                 commandBlock.setCommand(packet.getCommand());
+                 commandBlock.setTrackOutput(packet.isTrackOutput());
+@@ -1060,11 +1064,12 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleSetStructureBlock(ServerboundSetStructureBlockPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos pos = packet.getPos();
+-            BlockState blockState = this.player.level().getBlockState(pos);
+-            if (this.player.level().getBlockEntity(pos) instanceof StructureBlockEntity structureBlockEntity) {
++            BlockState blockState = serverLevel.getBlockState(pos); // fluxent - remove duplicate code
++            if (serverLevel.getBlockEntity(pos) instanceof StructureBlockEntity structureBlockEntity) { // fluxent - remove duplicate code
+                 structureBlockEntity.setMode(packet.getMode());
+                 structureBlockEntity.setStructureName(packet.getName());
+                 structureBlockEntity.setStructurePos(packet.getOffset());
+@@ -1089,7 +1094,7 @@ public class ServerGamePacketListenerImpl
+                     } else if (packet.getUpdateType() == StructureBlockEntity.UpdateType.LOAD_AREA) {
+                         if (!structureBlockEntity.isStructureLoadable()) {
+                             this.player.displayClientMessage(Component.translatable("structure_block.load_not_found", structureName), false);
+-                        } else if (structureBlockEntity.placeStructureIfSameSize(this.player.serverLevel())) {
++                        } else if (structureBlockEntity.placeStructureIfSameSize(serverLevel)) { // fluxent - remove duplicate code
+                             this.player.displayClientMessage(Component.translatable("structure_block.load_success", structureName), false);
+                         } else {
+                             this.player.displayClientMessage(Component.translatable("structure_block.load_prepare", structureName), false);
+@@ -1106,31 +1111,33 @@ public class ServerGamePacketListenerImpl
+                 }
+ 
+                 structureBlockEntity.setChanged();
+-                this.player.level().sendBlockUpdated(pos, blockState, blockState, 3);
++                serverLevel.sendBlockUpdated(pos, blockState, blockState, 3); // fluxent - remove duplicate code
+             }
+         }
+     }
+ 
+     @Override
+     public void handleSetTestBlock(ServerboundSetTestBlockPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos blockPos = packet.position();
+-            BlockState blockState = this.player.level().getBlockState(blockPos);
+-            if (this.player.level().getBlockEntity(blockPos) instanceof TestBlockEntity testBlockEntity) {
++            BlockState blockState = serverLevel.getBlockState(blockPos); // fluxent - remove duplicate code
++            if (serverLevel.getBlockEntity(blockPos) instanceof TestBlockEntity testBlockEntity) { // fluxent - remove duplicate code
+                 testBlockEntity.setMode(packet.mode());
+                 testBlockEntity.setMessage(packet.message());
+                 testBlockEntity.setChanged();
+-                this.player.level().sendBlockUpdated(blockPos, blockState, testBlockEntity.getBlockState(), 3);
++                serverLevel.sendBlockUpdated(blockPos, blockState, testBlockEntity.getBlockState(), 3); // fluxent - remove duplicate code
+             }
+         }
+     }
+ 
+     @Override
+     public void handleTestInstanceBlockAction(ServerboundTestInstanceBlockActionPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         BlockPos blockPos = packet.pos();
+-        if (this.player.canUseGameMasterBlocks() && this.player.level().getBlockEntity(blockPos) instanceof TestInstanceBlockEntity testInstanceBlockEntity) {
++        if (this.player.canUseGameMasterBlocks() && serverLevel.getBlockEntity(blockPos) instanceof TestInstanceBlockEntity testInstanceBlockEntity) { // fluxent - remove duplicate code
+             if (packet.action() != ServerboundTestInstanceBlockActionPacket.Action.QUERY
+                 && packet.action() != ServerboundTestInstanceBlockActionPacket.Action.INIT) {
+                 testInstanceBlockEntity.set(packet.data());
+@@ -1144,8 +1151,8 @@ public class ServerGamePacketListenerImpl
+                     testInstanceBlockEntity.runTest(this.player::sendSystemMessage);
+                 }
+ 
+-                BlockState blockState = this.player.level().getBlockState(blockPos);
+-                this.player.level().sendBlockUpdated(blockPos, Blocks.AIR.defaultBlockState(), blockState, 3);
++                BlockState blockState = serverLevel.getBlockState(blockPos); // fluxent - remove duplicate code
++                serverLevel.sendBlockUpdated(blockPos, Blocks.AIR.defaultBlockState(), blockState, 3); // fluxent - remove duplicate code
+             } else {
+                 Registry<GameTestInstance> registry = this.player.registryAccess().lookupOrThrow(Registries.TEST_INSTANCE);
+                 Optional<Holder.Reference<GameTestInstance>> optional = packet.data().test().flatMap(registry::get);
+@@ -1160,7 +1167,7 @@ public class ServerGamePacketListenerImpl
+                 if (packet.action() == ServerboundTestInstanceBlockActionPacket.Action.QUERY) {
+                     optional1 = packet.data()
+                         .test()
+-                        .flatMap(resourceKey -> TestInstanceBlockEntity.getStructureSize(this.player.serverLevel(), (ResourceKey<GameTestInstance>)resourceKey));
++                        .flatMap(resourceKey -> TestInstanceBlockEntity.getStructureSize(serverLevel, (ResourceKey<GameTestInstance>)resourceKey)); // fluxent - remove duplicate code
+                 } else {
+                     optional1 = Optional.empty();
+                 }
+@@ -1172,11 +1179,12 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleSetJigsawBlock(ServerboundSetJigsawBlockPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos pos = packet.getPos();
+-            BlockState blockState = this.player.level().getBlockState(pos);
+-            if (this.player.level().getBlockEntity(pos) instanceof JigsawBlockEntity jigsawBlockEntity) {
++            BlockState blockState = serverLevel.getBlockState(pos); // fluxent - remove duplicate code
++            if (serverLevel.getBlockEntity(pos) instanceof JigsawBlockEntity jigsawBlockEntity) { // fluxent - remove duplicate code
+                 jigsawBlockEntity.setName(packet.getName());
+                 jigsawBlockEntity.setTarget(packet.getTarget());
+                 jigsawBlockEntity.setPool(ResourceKey.create(Registries.TEMPLATE_POOL, packet.getPool()));
+@@ -1185,18 +1193,19 @@ public class ServerGamePacketListenerImpl
+                 jigsawBlockEntity.setPlacementPriority(packet.getPlacementPriority());
+                 jigsawBlockEntity.setSelectionPriority(packet.getSelectionPriority());
+                 jigsawBlockEntity.setChanged();
+-                this.player.level().sendBlockUpdated(pos, blockState, blockState, 3);
++                serverLevel.sendBlockUpdated(pos, blockState, blockState, 3); // fluxent - remove duplicate code
+             }
+         }
+     }
+ 
+     @Override
+     public void handleJigsawGenerate(ServerboundJigsawGeneratePacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos pos = packet.getPos();
+-            if (this.player.level().getBlockEntity(pos) instanceof JigsawBlockEntity jigsawBlockEntity) {
+-                jigsawBlockEntity.generate(this.player.serverLevel(), packet.levels(), packet.keepJigsaws());
++            if (serverLevel.getBlockEntity(pos) instanceof JigsawBlockEntity jigsawBlockEntity) { // fluxent - remove duplicate code
++                jigsawBlockEntity.generate(serverLevel, packet.levels(), packet.keepJigsaws()); // fluxent - remove duplicate code
+             }
+         }
+     }
+@@ -1316,9 +1325,10 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleEntityTagQuery(ServerboundEntityTagQueryPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.hasPermissions(2)) {
+-            Entity entity = this.player.level().getEntity(packet.getEntityId());
++            Entity entity = serverLevel.getEntity(packet.getEntityId()); // fluxent - remove duplicate code
+             if (entity != null) {
+                 CompoundTag compoundTag = entity.saveWithoutId(new CompoundTag());
+                 this.player.connection.send(new ClientboundTagQueryPacket(packet.getTransactionId(), compoundTag));
+@@ -1338,9 +1348,10 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleBlockEntityTagQuery(ServerboundBlockEntityTagQueryPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.hasPermissions(2)) {
+-            BlockEntity blockEntity = this.player.level().getBlockEntity(packet.getPos());
++            BlockEntity blockEntity = serverLevel.getBlockEntity(packet.getPos()); // fluxent - remove duplicate code
+             CompoundTag compoundTag = blockEntity != null ? blockEntity.saveWithoutMetadata(this.player.registryAccess()) : null;
+             this.player.connection.send(new ClientboundTagQueryPacket(packet.getTransactionId(), compoundTag));
+         }
+@@ -1348,11 +1359,12 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleMovePlayer(ServerboundMovePlayerPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (containsInvalidValues(packet.getX(0.0), packet.getY(0.0), packet.getZ(0.0), packet.getYRot(0.0F), packet.getXRot(0.0F))) {
+             this.disconnect(Component.translatable("multiplayer.disconnect.invalid_player_movement"), org.bukkit.event.player.PlayerKickEvent.Cause.INVALID_PLAYER_MOVEMENT); // Paper - kick event cause
+         } else {
+-            ServerLevel serverLevel = this.player.serverLevel();
++            // fluxent - remove duplicate code
+             if (!this.player.wonGame && !this.player.isImmobile()) { // CraftBukkit
+                 if (this.tickCount == 0) {
+                     this.resetPosition();
+@@ -1369,7 +1381,7 @@ public class ServerGamePacketListenerImpl
+                         double d2 = clampHorizontal(packet.getZ(this.player.getZ())); final double toZ = d2; // Paper - OBFHELPER
+                         if (this.player.isPassenger()) {
+                             this.player.absSnapTo(this.player.getX(), this.player.getY(), this.player.getZ(), f, f1);
+-                            this.player.serverLevel().getChunkSource().move(this.player);
++                            serverLevel.getChunkSource().move(this.player); // fluxent - remove duplicate code
+                             this.allowedPlayerTicks = 20; // CraftBukkit
+                         } else {
+                             // CraftBukkit - Make sure the move is valid but then reset it for plugins to modify
+@@ -1431,7 +1443,7 @@ public class ServerGamePacketListenerImpl
+                                         speed = this.player.getAbilities().walkingSpeed * 10f;
+                                     }
+                                     // Paper start - Prevent moving into unloaded chunks
+-                                    if (this.player.level().paperConfig().chunks.preventMovingIntoUnloadedChunks && (this.player.getX() != toX || this.player.getZ() != toZ) && !serverLevel.areChunksLoadedForMove(this.player.getBoundingBox().expandTowards(new Vec3(toX, toY, toZ).subtract(this.player.position())))) {
++                                    if (serverLevel.paperConfig().chunks.preventMovingIntoUnloadedChunks && (this.player.getX() != toX || this.player.getZ() != toZ) && !serverLevel.areChunksLoadedForMove(this.player.getBoundingBox().expandTowards(new Vec3(toX, toY, toZ).subtract(this.player.position())))) { // fluxent - remove duplicate code
+                                         // Paper start - Add fail move event
+                                         io.papermc.paper.event.player.PlayerFailMoveEvent event = fireFailMove(io.papermc.paper.event.player.PlayerFailMoveEvent.FailReason.MOVED_INTO_UNLOADED_CHUNK,
+                                                 toX, toY, toZ, toYaw, toPitch, false);
+@@ -1634,7 +1646,7 @@ public class ServerGamePacketListenerImpl
+                                         && !isFallFlying
+                                         && !isAutoSpinAttack
+                                         && this.noBlocksAround(this.player);
+-                                    this.player.serverLevel().getChunkSource().move(this.player);
++                                    serverLevel.getChunkSource().move(this.player); // fluxent - remove duplicate code
+                                     Vec3 vec3 = new Vec3(this.player.getX() - x, this.player.getY() - y, this.player.getZ() - z);
+                                     this.player.setOnGroundWithMovement(packet.isOnGround(), packet.horizontalCollision(), vec3);
+                                     this.player.doCheckFallDamage(vec3.x, vec3.y, vec3.z, packet.isOnGround());
+@@ -1834,7 +1846,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handlePlayerAction(ServerboundPlayerActionPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (this.player.hasClientLoaded()) {
+             BlockPos pos = packet.getPos();
+@@ -1905,7 +1918,7 @@ public class ServerGamePacketListenerImpl
+                 case ABORT_DESTROY_BLOCK:
+                 case STOP_DESTROY_BLOCK:
+                     // Paper start - Don't allow digging into unloaded chunks
+-                    if (this.player.level().getChunkIfLoadedImmediately(pos.getX() >> 4, pos.getZ() >> 4) == null || !this.player.canInteractWithBlock(pos, 1.0)) {
++                    if (serverLevel.getChunkIfLoadedImmediately(pos.getX() >> 4, pos.getZ() >> 4) == null || !this.player.canInteractWithBlock(pos, 1.0)) { // fluxent - remove duplicate code
+                         this.player.connection.ackBlockChangesUpTo(packet.getSequence());
+                         return;
+                     }
+@@ -1914,7 +1927,7 @@ public class ServerGamePacketListenerImpl
+                     this.player.gameMode.capturedBlockEntity = false;
+                     this.player.gameMode.captureSentBlockEntities = true;
+                     // Paper end - Send block entities after destroy prediction
+-                    this.player.gameMode.handleBlockBreakAction(pos, action, packet.getDirection(), this.player.level().getMaxY(), packet.getSequence());
++                    this.player.gameMode.handleBlockBreakAction(pos, action, packet.getDirection(), serverLevel.getMaxY(), packet.getSequence()); // fluxent - remove duplicate code
+                     this.player.connection.ackBlockChangesUpTo(packet.getSequence());
+                     // Paper start - Send block entities after destroy prediction
+                     this.player.gameMode.captureSentBlockEntities = false;
+@@ -1926,7 +1939,7 @@ public class ServerGamePacketListenerImpl
+                         this.player.connection.ackBlockChangesUpTo = -1;
+ 
+                         this.player.gameMode.capturedBlockEntity = false;
+-                        BlockEntity blockEntity = this.player.level().getBlockEntity(pos);
++                        BlockEntity blockEntity = serverLevel.getBlockEntity(pos); // fluxent - remove duplicate code
+                         if (blockEntity != null) {
+                             this.player.connection.send(blockEntity.getUpdatePacket());
+                         }
+@@ -1971,12 +1984,13 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleUseItemOn(ServerboundUseItemOnPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (!this.checkLimit(packet.timestamp)) return; // Spigot - check limit
+         if (this.player.hasClientLoaded()) {
+             this.player.connection.ackBlockChangesUpTo(packet.getSequence());
+-            ServerLevel serverLevel = this.player.serverLevel();
++            // fluxent - remove duplicate code
+             InteractionHand hand = packet.getHand();
+             ItemStack itemInHand = this.player.getItemInHand(hand);
+             if (itemInHand.isItemEnabled(serverLevel.enabledFeatures())) {
+@@ -1994,7 +2008,7 @@ public class ServerGamePacketListenerImpl
+                     if (Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) {
+                         Direction direction = hitResult.getDirection();
+                         this.player.resetLastActionTime();
+-                        int maxY = this.player.level().getMaxY();
++                        int maxY = serverLevel.getMaxY(); // fluxent - remove duplicate code
+                         if (blockPos.getY() <= maxY) {
+                             if (this.awaitingPositionFromClient == null && (serverLevel.mayInteract(this.player, blockPos) || (serverLevel.paperConfig().spawn.allowUsingSignsInsideSpawnProtection && serverLevel.getBlockState(blockPos).getBlock() instanceof net.minecraft.world.level.block.SignBlock))) { // Paper - Allow using signs inside spawn protection
+                                 this.player.stopUsingItem(); // CraftBukkit - SPIGOT-4706
+@@ -2030,12 +2044,13 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleUseItem(ServerboundUseItemPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (!this.checkLimit(packet.timestamp)) return; // Spigot - check limit
+         if (this.player.hasClientLoaded()) {
+             this.ackBlockChangesUpTo(packet.getSequence());
+-            ServerLevel serverLevel = this.player.serverLevel();
++            // fluxent - remove duplicate code
+             InteractionHand hand = packet.getHand();
+             ItemStack itemInHand = this.player.getItemInHand(hand);
+             this.player.resetLastActionTime();
+@@ -2061,7 +2076,7 @@ public class ServerGamePacketListenerImpl
+                 float f8 = f3 * f5;
+                 double d3 = this.player.blockInteractionRange();
+                 Vec3 to = from.add((double) f7 * d3, (double) f6 * d3, (double) f8 * d3);
+-                BlockHitResult hitResult = this.player.level().clip(new net.minecraft.world.level.ClipContext(from, to, net.minecraft.world.level.ClipContext.Block.OUTLINE, net.minecraft.world.level.ClipContext.Fluid.NONE, this.player));
++                BlockHitResult hitResult = serverLevel.clip(new net.minecraft.world.level.ClipContext(from, to, net.minecraft.world.level.ClipContext.Block.OUTLINE, net.minecraft.world.level.ClipContext.Fluid.NONE, this.player)); // fluxent - remove duplicate code
+ 
+                 boolean cancelled;
+                 if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
+@@ -2524,7 +2539,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleAnimate(ServerboundSwingPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.isImmobile()) return; // CraftBukkit
+         this.player.resetLastActionTime();
+         // CraftBukkit start - Raytrace to look for 'rogue armswings'
+@@ -2533,12 +2549,12 @@ public class ServerGamePacketListenerImpl
+         double d0 = this.player.getX();
+         double d1 = this.player.getY() + (double) this.player.getEyeHeight();
+         double d2 = this.player.getZ();
+-        Location origin = new Location(this.player.level().getWorld(), d0, d1, d2, f2, f1);
++        Location origin = new Location(serverLevel.getWorld(), d0, d1, d2, f2, f1); // fluxent - remove duplicate code
+ 
+         double d3 = Math.max(this.player.blockInteractionRange(), this.player.entityInteractionRange());
+         // SPIGOT-5607: Only call interact event if no block or entity is being clicked. Use bukkit ray trace method, because it handles blocks and entities at the same time
+         // SPIGOT-7429: Make sure to call PlayerInteractEvent for spectators and non-pickable entities
+-        org.bukkit.util.RayTraceResult result = this.player.level().getWorld().rayTrace(origin, origin.getDirection(), d3, org.bukkit.FluidCollisionMode.NEVER, false, 0.0, entity -> { // Paper - Call interact event; change raySize from 0.1 to 0.0
++        org.bukkit.util.RayTraceResult result = serverLevel.getWorld().rayTrace(origin, origin.getDirection(), d3, org.bukkit.FluidCollisionMode.NEVER, false, 0.0, entity -> { // Paper - Call interact event; change raySize from 0.1 to 0.0 // fluxent - remove duplicate code
+             Entity handle = ((CraftEntity) entity).getHandle();
+             return entity != this.player.getBukkitEntity() && this.player.getBukkitEntity().canSee(entity) && !handle.isSpectator() && handle.isPickable() && !handle.isPassengerOfSameVehicle(this.player);
+         });
+@@ -2564,7 +2580,8 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handlePlayerCommand(ServerboundPlayerCommandPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.hasClientLoaded()) {
+             // CraftBukkit start
+             if (this.player.isRemoved()) return;
+@@ -2597,7 +2614,7 @@ public class ServerGamePacketListenerImpl
+                 case PRESS_SHIFT_KEY:
+                     this.player.setShiftKeyDown(true);
+                     // Paper start - Add option to make parrots stay
+-                    if (this.player.level().paperConfig().entities.behavior.parrotsAreUnaffectedByPlayerMovement) {
++                    if (serverLevel.paperConfig().entities.behavior.parrotsAreUnaffectedByPlayerMovement) { // fluxent - remove duplicate code
+                         this.player.removeEntitiesOnShoulder();
+                     }
+                     // Paper end - Add option to make parrots stay
+@@ -3372,11 +3389,12 @@ public class ServerGamePacketListenerImpl
+ 
+     @Override
+     public void handleSetCreativeModeSlot(ServerboundSetCreativeModeSlotPacket packet) {
+-        PacketUtils.ensureRunningOnSameThread(packet, this, this.player.serverLevel());
++        ServerLevel serverLevel = this.player.serverLevel(); // fluxent - remove duplicate code
++        PacketUtils.ensureRunningOnSameThread(packet, this, serverLevel); // fluxent - remove duplicate code
+         if (this.player.hasInfiniteMaterials()) {
+             boolean flag = packet.slotNum() < 0;
+             ItemStack itemStack = packet.itemStack();
+-            if (!itemStack.isItemEnabled(this.player.level().enabledFeatures())) {
++            if (!itemStack.isItemEnabled(serverLevel.enabledFeatures())) { // fluxent - remove duplicate code
+                 return;
+             }
+ 
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 9ca3c55a3b5b1a532b86b08eb92460df4cb54f2a..22c874d53d7036cdd0fff4067b6cfe20757050b4 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -716,25 +716,24 @@ public abstract class PlayerList {
+         player.stopRiding(); // CraftBukkit
+         this.players.remove(player);
+         this.playersByName.remove(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Spigot
+-        player.serverLevel().removePlayerImmediately(player, reason);
++        ServerLevel serverLevel = player.serverLevel(); // fluxent - remove duplicate code
++        serverLevel.removePlayerImmediately(player, reason);
+         // TeleportTransition teleportTransition = player.findRespawnPositionAndUseSpawnBlock(!keepInventory, TeleportTransition.DO_NOTHING);
+         // ServerLevel level = teleportTransition.newLevel();
+         // ServerPlayer serverPlayer = new ServerPlayer(this.server, level, player.getGameProfile(), player.clientInformation());
+-        ServerPlayer serverPlayer = player;
+-        Level fromWorld = player.level();
++        // fluxent start - remove duplicate code
+         player.wonGame = false;
+         // CraftBukkit end
+-        serverPlayer.connection = player.connection;
+-        serverPlayer.restoreFrom(player, keepInventory);
+-        serverPlayer.setId(player.getId());
+-        serverPlayer.setMainArm(player.getMainArm());
++        player.restoreFrom(player, keepInventory);
++        player.setId(player.getId());
++        player.setMainArm(player.getMainArm());
+         // CraftBukkit - not required, just copies old location into reused entity
+         // if (!teleportTransition.missingRespawnBlock()) {
+         //     serverPlayer.copyRespawnPosition(player);
+         // }
+ 
+         for (String string : player.getTags()) {
+-            serverPlayer.addTag(string);
++            player.addTag(string);
+         }
+         // Paper start - Add PlayerPostRespawnEvent
+         boolean isBedSpawn = false;
+@@ -762,49 +761,48 @@ public abstract class PlayerList {
+         }
+         // Spigot end
+         ServerLevel level = teleportTransition.newLevel();
+-        serverPlayer.spawnIn(level);
+-        serverPlayer.unsetRemoved();
+-        serverPlayer.setShiftKeyDown(false);
++        player.spawnIn(level);
++        player.unsetRemoved();
++        player.setShiftKeyDown(false);
+         Vec3 vec3 = teleportTransition.position();
+-        serverPlayer.forceSetPositionRotation(vec3.x, vec3.y, vec3.z, teleportTransition.yRot(), teleportTransition.xRot());
++        player.forceSetPositionRotation(vec3.x, vec3.y, vec3.z, teleportTransition.yRot(), teleportTransition.xRot());
+         level.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.POST_TELEPORT, new net.minecraft.world.level.ChunkPos(net.minecraft.util.Mth.floor(vec3.x()) >> 4, net.minecraft.util.Mth.floor(vec3.z()) >> 4), 1); // Paper - post teleport ticket type
+         // CraftBukkit end
+         if (teleportTransition.missingRespawnBlock()) {
+-            serverPlayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
+-            serverPlayer.setRespawnPosition(null, false, com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.PLAYER_RESPAWN); // CraftBukkit - SPIGOT-5988: Clear respawn location when obstructed // Paper - PlayerSetSpawnEvent
++            player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
++            player.setRespawnPosition(null, false, com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.PLAYER_RESPAWN); // CraftBukkit - SPIGOT-5988: Clear respawn location when obstructed // Paper - PlayerSetSpawnEvent
+         }
+ 
+         byte b = (byte)(keepInventory ? 1 : 0);
+-        ServerLevel serverLevel = serverPlayer.serverLevel();
+         LevelData levelData = serverLevel.getLevelData();
+-        serverPlayer.connection.send(new ClientboundRespawnPacket(serverPlayer.createCommonSpawnInfo(serverLevel), b));
++        player.connection.send(new ClientboundRespawnPacket(player.createCommonSpawnInfo(serverLevel), b));
+         // serverPlayer.connection.teleport(serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(), serverPlayer.getYRot(), serverPlayer.getXRot());
+-        serverPlayer.connection.send(new ClientboundSetChunkCacheRadiusPacket(serverLevel.spigotConfig.viewDistance)); // Spigot
+-        serverPlayer.connection.send(new ClientboundSetSimulationDistancePacket(serverLevel.spigotConfig.simulationDistance)); // Spigot
+-        serverPlayer.connection.teleport(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(serverPlayer.position(), serverLevel.getWorld(), serverPlayer.getYRot(), serverPlayer.getXRot())); // CraftBukkit
+-        serverPlayer.connection.send(new ClientboundSetDefaultSpawnPositionPacket(level.getSharedSpawnPos(), level.getSharedSpawnAngle()));
+-        serverPlayer.connection.send(new ClientboundChangeDifficultyPacket(levelData.getDifficulty(), levelData.isDifficultyLocked()));
+-        serverPlayer.connection
+-            .send(new ClientboundSetExperiencePacket(serverPlayer.experienceProgress, serverPlayer.totalExperience, serverPlayer.experienceLevel));
+-        this.sendActivePlayerEffects(serverPlayer);
+-        this.sendLevelInfo(serverPlayer, level);
+-        this.sendPlayerPermissionLevel(serverPlayer);
+-        if (!serverPlayer.connection.isDisconnected()) {
+-            level.addRespawnedPlayer(serverPlayer);
+-            this.players.add(serverPlayer);
+-            this.playersByName.put(serverPlayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT), serverPlayer); // Spigot
+-            this.playersByUUID.put(serverPlayer.getUUID(), serverPlayer);
++        player.connection.send(new ClientboundSetChunkCacheRadiusPacket(serverLevel.spigotConfig.viewDistance)); // Spigot
++        player.connection.send(new ClientboundSetSimulationDistancePacket(serverLevel.spigotConfig.simulationDistance)); // Spigot
++        player.connection.teleport(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(player.position(), serverLevel.getWorld(), player.getYRot(), player.getXRot())); // CraftBukkit
++        player.connection.send(new ClientboundSetDefaultSpawnPositionPacket(level.getSharedSpawnPos(), level.getSharedSpawnAngle()));
++        player.connection.send(new ClientboundChangeDifficultyPacket(levelData.getDifficulty(), levelData.isDifficultyLocked()));
++        player.connection
++            .send(new ClientboundSetExperiencePacket(player.experienceProgress, player.totalExperience, player.experienceLevel));
++        this.sendActivePlayerEffects(player);
++        this.sendLevelInfo(player, level);
++        this.sendPlayerPermissionLevel(player);
++        if (!player.connection.isDisconnected()) {
++            level.addRespawnedPlayer(player);
++            this.players.add(player);
++            this.playersByName.put(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT), player); // Spigot
++            this.playersByUUID.put(player.getUUID(), player);
+         }
+         // serverPlayer.initInventoryMenu();
+-        serverPlayer.setHealth(serverPlayer.getHealth());
+-        ServerPlayer.RespawnConfig respawnConfig = serverPlayer.getRespawnConfig();
++        player.setHealth(player.getHealth());
++        ServerPlayer.RespawnConfig respawnConfig = player.getRespawnConfig();
+         if (!keepInventory && respawnConfig != null) {
+             ServerLevel level1 = this.server.getLevel(respawnConfig.dimension());
+             if (level1 != null) {
+                 BlockPos blockPos = respawnConfig.pos();
+                 BlockState blockState = level1.getBlockState(blockPos);
+                 if (blockState.is(Blocks.RESPAWN_ANCHOR)) {
+-                    serverPlayer.connection
++                    player.connection
+                         .send(
+                             new ClientboundSoundPacket(
+                                 SoundEvents.RESPAWN_ANCHOR_DEPLETE,
+@@ -840,8 +838,8 @@ public abstract class PlayerList {
+         player.triggerDimensionChangeTriggers(level);
+ 
+         // Don't fire on respawn
+-        if (fromWorld != level) {
+-            org.bukkit.event.player.PlayerChangedWorldEvent event = new org.bukkit.event.player.PlayerChangedWorldEvent(player.getBukkitEntity(), fromWorld.getWorld());
++        if (serverLevel != level) {
++            org.bukkit.event.player.PlayerChangedWorldEvent event = new org.bukkit.event.player.PlayerChangedWorldEvent(player.getBukkitEntity(), serverLevel.getWorld());
+             this.server.server.getPluginManager().callEvent(event);
+         }
+ 
+@@ -865,7 +863,8 @@ public abstract class PlayerList {
+ 
+         // CraftBukkit end
+ 
+-        return serverPlayer;
++        return player;
++        // fluxent end - remove duplicate code
+     }
+ 
+     public void sendActivePlayerEffects(ServerPlayer player) {
+@@ -1151,9 +1150,10 @@ public abstract class PlayerList {
+         player.refreshEntityData(player); // CraftBukkit - SPIGOT-7218: sync metadata
+         player.connection.send(new ClientboundSetHeldSlotPacket(player.getInventory().getSelectedSlot()));
+         // CraftBukkit start - from GameRules
+-        int i = player.serverLevel().getGameRules().getBoolean(GameRules.RULE_REDUCEDDEBUGINFO) ? 22 : 23;
++        ServerLevel serverLevel = player.serverLevel(); // fluxent - remove duplicate code
++        int i = serverLevel.getGameRules().getBoolean(GameRules.RULE_REDUCEDDEBUGINFO) ? 22 : 23; // fluxent - remove duplicate code
+         player.connection.send(new ClientboundEntityEventPacket(player, (byte) i));
+-        float immediateRespawn = player.serverLevel().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN) ? 1.0F: 0.0F;
++        float immediateRespawn = serverLevel.getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN) ? 1.0F: 0.0F; // fluxent - remove duplicate code
+         player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.IMMEDIATE_RESPAWN, immediateRespawn));
+         // CraftBukkit end
+     }
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 4057431072cd1ca159b25576969908ed30ad0868..e52b1461a8d6e66878681118c02a1e6454f05fd4 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -809,8 +809,10 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+     // CraftBukkit start
+     public void postTick() {
+         // No clean way to break out of ticking once the entity has been copied to a new world, so instead we move the portalling later in the tick cycle
+-        if (!(this instanceof ServerPlayer) && this.isAlive()) { // Paper - don't attempt to teleport dead entities
+-            this.handlePortal();
++        // fluxent start - remove duplicate code
++        if (!(this instanceof ServerPlayer) && this.isAlive() && level() instanceof ServerLevel serverLevel) { // Paper - don't attempt to teleport dead entities
++            this.handlePortal(serverLevel);
++        // fluxent end - remove duplicate code
+         }
+     }
+     // CraftBukkit end
+@@ -828,7 +830,14 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+             this.boardingCooldown--;
+         }
+ 
+-        if (this instanceof ServerPlayer) this.handlePortal(); // CraftBukkit - Moved up to postTick
++        // fluxent start - remove duplicate code
++        ServerLevel serverLevel;
++        if (this.level() instanceof ServerLevel sl) {
++            serverLevel = sl;
++        if (this instanceof ServerPlayer) this.handlePortal(serverLevel); // CraftBukkit - Moved up to postTick
++        }
++        else serverLevel = null;
++        // fluxent end - remove duplicate code
+         if (this.canSpawnSprintParticle()) {
+             this.spawnSprintParticle();
+         }
+@@ -838,7 +847,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+         this.updateInWaterStateAndDoFluidPushing();
+         this.updateFluidOnEyes();
+         this.updateSwimming();
+-        if (this.level() instanceof ServerLevel serverLevel) {
++        if (serverLevel != null) { // fluxent - remove duplicate code
+             if (this.remainingFireTicks > 0) {
+                 if (this.fireImmune()) {
+                     this.setRemainingFireTicks(this.remainingFireTicks - 4);
+@@ -871,8 +880,10 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+         }
+ 
+         this.firstTick = false;
+-        if (this.level() instanceof ServerLevel serverLevelx && this instanceof Leashable) {
+-            Leashable.tickLeash(serverLevelx, (Entity & Leashable)this);
++        // fluxent start - remove duplicate code
++        if (serverLevel != null && this instanceof Leashable) {
++            Leashable.tickLeash(serverLevel, (Entity & Leashable)this);
++        // fluxent end - remove duplicate code
+         }
+ 
+         profilerFiller.pop();
+@@ -3207,8 +3218,10 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+         }
+     }
+ 
+-    protected void handlePortal() {
+-        if (this.level() instanceof ServerLevel serverLevel) {
++    // fluxent start - remove duplicate code
++    protected void handlePortal(ServerLevel serverLevel) {
++        if (true) {
++    // fluxent end - remove duplicate code
+             this.processPortalCooldown();
+             if (this.portalProcess != null) {
+                 if (this.portalProcess.processPortalTeleportation(serverLevel, this, this.canUsePortal(false))) {
+diff --git a/net/minecraft/world/entity/LightningBolt.java b/net/minecraft/world/entity/LightningBolt.java
+index c1c63c77598786d86b4aa4475cc4d36e60955085..2a9402de42cee21f07f38d801a559c10e39db79a 100644
+--- a/net/minecraft/world/entity/LightningBolt.java
++++ b/net/minecraft/world/entity/LightningBolt.java
+@@ -113,11 +113,14 @@ public class LightningBolt extends Entity {
+             }
+         }
+ 
++        ServerLevel serverLevel = this.level() instanceof ServerLevel sl ? sl : null; // fluxent - remove duplicate code
++
+         this.life--;
+         if (this.life < 0) {
+             if (this.flashes == 0) {
+-                if (this.level() instanceof ServerLevel) {
+-                    List<Entity> entities = this.level()
++                // fluxent start - remove duplicate code
++                if (serverLevel != null) {
++                    List<Entity> entities = serverLevel
+                         .getEntities(
+                             this,
+                             new AABB(
+@@ -126,7 +129,8 @@ public class LightningBolt extends Entity {
+                             entity1 -> entity1.isAlive() && !this.hitEntities.contains(entity1)
+                         );
+ 
+-                    for (ServerPlayer serverPlayer : ((ServerLevel)this.level()).getPlayers(player -> player.distanceTo(this) < 256.0F)) {
++                    for (ServerPlayer serverPlayer : serverLevel.getPlayers(player -> player.distanceTo(this) < 256.0F)) {
++                    // fluxent end - remove duplicate code
+                         CriteriaTriggers.LIGHTNING_STRIKE.trigger(serverPlayer, this, entities);
+                     }
+                 }
+@@ -141,10 +145,12 @@ public class LightningBolt extends Entity {
+         }
+ 
+         if (this.life >= 0 && !this.isEffect) { // Paper - Properly handle lightning effects api
+-            if (!(this.level() instanceof ServerLevel)) {
++            // fluxent start - remove duplicate code
++            if (serverLevel == null) {
+                 this.level().setSkyFlashTime(2);
+             } else if (!this.visualOnly && !this.isEffect) { // Paper - Properly handle lightning effects api
+-                List<Entity> entities = this.level()
++                List<Entity> entities = serverLevel
++            // fluxent end - remove duplicate code
+                     .getEntities(
+                         this,
+                         new AABB(this.getX() - 3.0, this.getY() - 3.0, this.getZ() - 3.0, this.getX() + 3.0, this.getY() + 6.0 + 3.0, this.getZ() + 3.0),
+@@ -152,7 +158,7 @@ public class LightningBolt extends Entity {
+                     );
+ 
+                 for (Entity entity : entities) {
+-                    entity.thunderHit((ServerLevel)this.level(), this);
++                    entity.thunderHit(serverLevel, this); // fluxent - remove duplicate code
+                 }
+ 
+                 this.hitEntities.addAll(entities);
+@@ -170,12 +176,13 @@ public class LightningBolt extends Entity {
+ 
+     private void spawnFire(int extraIgnitions) {
+         if (!this.visualOnly && !this.isEffect && this.level() instanceof ServerLevel serverLevel && serverLevel.getGameRules().getBoolean(GameRules.RULE_DOFIRETICK)) { // Paper - prevent any fire if only effect
++            // fluxent start - remove duplicate code
+             BlockPos blockPos = this.blockPosition();
+-            BlockState state = BaseFireBlock.getState(this.level(), blockPos);
+-            if (this.level().getBlockState(blockPos).isAir() && state.canSurvive(this.level(), blockPos)) {
++            BlockState state = BaseFireBlock.getState(serverLevel, blockPos);
++            if (serverLevel.getBlockState(blockPos).isAir() && state.canSurvive(serverLevel, blockPos)) {
+                 // CraftBukkit start
+-                if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBlockIgniteEvent(this.level(), blockPos, this).isCancelled()) {
+-                    this.level().setBlockAndUpdate(blockPos, state);
++                if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBlockIgniteEvent(serverLevel, blockPos, this).isCancelled()) {
++                    serverLevel.setBlockAndUpdate(blockPos, state);
+                     this.blocksSetOnFire++;
+                 }
+                 // CraftBukkit end
+diff --git a/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java b/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java
+index 3d40911970caf6f1de2a1ebee1df4c077703226a..691af09519fbb49293168b99cd51c2f6feb42411 100644
+--- a/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java
++++ b/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java
+@@ -75,12 +75,13 @@ public class RemoveBlockGoal extends MoveToBlockGoal {
+         BlockPos posWithBlock = this.getPosWithBlock(blockPos, level);
+         RandomSource random = this.removerMob.getRandom();
+         if (this.isReachedTarget() && posWithBlock != null) {
++            ServerLevel serverLevel = level.isClientSide ? null : (ServerLevel) level; // fluxent - remove duplicate code
+             if (this.ticksSinceReachedGoal > 0) {
+                 Vec3 deltaMovement = this.removerMob.getDeltaMovement();
+                 this.removerMob.setDeltaMovement(deltaMovement.x, 0.3, deltaMovement.z);
+                 if (!level.isClientSide) {
+                     double d = 0.08;
+-                    ((ServerLevel)level)
++                    serverLevel // fluxent - remove duplicate code
+                         .sendParticles(
+                             new ItemParticleOption(ParticleTypes.ITEM, new ItemStack(Items.EGG)),
+                             posWithBlock.getX() + 0.5,
+@@ -115,7 +116,7 @@ public class RemoveBlockGoal extends MoveToBlockGoal {
+                         double d = random.nextGaussian() * 0.02;
+                         double d1 = random.nextGaussian() * 0.02;
+                         double d2 = random.nextGaussian() * 0.02;
+-                        ((ServerLevel)level)
++                        serverLevel // fluxent - remove duplicate code
+                             .sendParticles(ParticleTypes.POOF, posWithBlock.getX() + 0.5, posWithBlock.getY(), posWithBlock.getZ() + 0.5, 1, d, d1, d2, 0.15F);
+                     }
+ 
+diff --git a/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java b/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java
+index d813427cf20117014bc42af0eb7cdee037fbcd9c..7f142f2116bfac27381a0bc7b79db7f051fc612a 100644
+--- a/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java
++++ b/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java
+@@ -53,22 +53,30 @@ public class EndCrystal extends Entity {
+     public void tick() {
+         this.time++;
+         this.applyEffectsFromBlocks();
+-        this.handlePortal();
+-        if (this.level() instanceof ServerLevel) {
++        // fluxent start - remove duplicate code
++        ServerLevel serverLevel;
++        if (this.level() instanceof ServerLevel sl) {
++            serverLevel = sl;
++            this.handlePortal(serverLevel);
+             BlockPos blockPos = this.blockPosition();
+-            if (((ServerLevel)this.level()).getDragonFight() != null && this.level().getBlockState(blockPos).isAir()) {
+-                if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBlockIgniteEvent(this.level(), blockPos, this).isCancelled()) { // Paper
+-                this.level().setBlockAndUpdate(blockPos, BaseFireBlock.getState(this.level(), blockPos));
++            if (serverLevel.getDragonFight() != null && serverLevel.getBlockState(blockPos).isAir()) {
++                if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBlockIgniteEvent(serverLevel, blockPos, this).isCancelled()) { // Paper
++                serverLevel.setBlockAndUpdate(blockPos, BaseFireBlock.getState(serverLevel, blockPos));
+                 } // Paper
+             }
++        } else {
++            serverLevel = null;
+         }
++        // fluxent end - remove duplicate code
+ 
+         // Paper start - Fix invulnerable end crystals
+         if (this.level().paperConfig().unsupportedSettings.fixInvulnerableEndCrystalExploit && this.generatedByDragonFight && this.isInvulnerable()) {
+-            if (!java.util.Objects.equals(((ServerLevel) this.level()).uuid, this.originWorld)
+-                || ((ServerLevel) this.level()).getDragonFight() == null
+-                || ((ServerLevel) this.level()).getDragonFight().respawnStage == null
+-                || ((ServerLevel) this.level()).getDragonFight().respawnStage.ordinal() > net.minecraft.world.level.dimension.end.DragonRespawnAnimation.SUMMONING_DRAGON.ordinal()) {
++            // fluxent start - remove duplicate code
++            if (!java.util.Objects.equals(serverLevel.uuid, this.originWorld)
++                || serverLevel.getDragonFight() == null
++                || serverLevel.getDragonFight().respawnStage == null
++                || serverLevel.getDragonFight().respawnStage.ordinal() > net.minecraft.world.level.dimension.end.DragonRespawnAnimation.SUMMONING_DRAGON.ordinal()) {
++            // fluxent end - remove duplicate code
+                 this.setInvulnerable(false);
+                 this.setBeamTarget(null);
+             }
+diff --git a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
+index 0f3c88601357399d3b8efd2f0e3a531482bc1f3d..ccfa9496b78054b7bbce1811d5d92d16572c290f 100644
+--- a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
++++ b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
+@@ -491,6 +491,7 @@ public class EnderDragon extends Mob implements Enemy {
+                 this.level().removeBlock(new BlockPos(block.getX(), block.getY(), block.getZ()), false);
+             }
+         } else {
++            ServerLevel serverLevel = level() instanceof ServerLevel sl ? sl : null; // fluxent - remove duplicate code
+             for (org.bukkit.block.Block block : event.blockList()) {
+                 org.bukkit.Material blockType = block.getType();
+                 if (blockType.isAir()) {
+@@ -503,7 +504,7 @@ public class EnderDragon extends Mob implements Enemy {
+                 net.minecraft.world.level.block.Block nmsBlock = craftBlock.getNMS().getBlock();
+                 if (nmsBlock.dropFromExplosion(this.explosionSource)) {
+                     net.minecraft.world.level.block.entity.BlockEntity blockEntity = craftBlock.getNMS().hasBlockEntity() ? this.level().getBlockEntity(pos) : null;
+-                    net.minecraft.world.level.storage.loot.LootParams.Builder builder = new net.minecraft.world.level.storage.loot.LootParams.Builder((ServerLevel) this.level())
++                    net.minecraft.world.level.storage.loot.LootParams.Builder builder = new net.minecraft.world.level.storage.loot.LootParams.Builder(serverLevel)
+                         .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
+                         .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.TOOL, net.minecraft.world.item.ItemStack.EMPTY)
+                         .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.EXPLOSION_RADIUS, 1.0F / event.getYield())
+@@ -512,14 +513,14 @@ public class EnderDragon extends Mob implements Enemy {
+                     craftBlock.getNMS().getDrops(builder).forEach((stack) -> {
+                         net.minecraft.world.level.block.Block.popResource(this.level(), pos, stack);
+                     });
+-                    craftBlock.getNMS().spawnAfterBreak((ServerLevel) this.level(), pos, net.minecraft.world.item.ItemStack.EMPTY, false);
++                    craftBlock.getNMS().spawnAfterBreak(serverLevel, pos, net.minecraft.world.item.ItemStack.EMPTY, false);
+                 }
+                 // Paper start - TNTPrimeEvent
+                 org.bukkit.block.Block tntBlock = org.bukkit.craftbukkit.block.CraftBlock.at(this.level(), pos);
+                 if (!new com.destroystokyo.paper.event.block.TNTPrimeEvent(tntBlock, com.destroystokyo.paper.event.block.TNTPrimeEvent.PrimeReason.EXPLOSION, explosionSource.getIndirectSourceEntity().getBukkitEntity()).callEvent())
+                     continue;
+                 // Paper end - TNTPrimeEvent
+-                nmsBlock.wasExploded((ServerLevel) this.level(), pos, this.explosionSource);
++                nmsBlock.wasExploded(serverLevel, pos, this.explosionSource);
+ 
+                 this.level().removeBlock(pos, false);
+             }
+diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
+index 31edd0d45ac6c38887e4cebffe5a7cf377b47466..e77024bd2c41a61b0e264ff4326d6da2d46ba89c 100644
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -162,27 +162,29 @@ public class FallingBlockEntity extends Entity {
+                 return;
+             }
+             // Paper end - Configurable falling blocks height nerf
+-            this.handlePortal();
+-            if (this.level() instanceof ServerLevel serverLevel && (this.isAlive() || this.forceTickAfterTeleportToDuplicate)) {
++            // fluxent start - remove duplicate code
++            if(this.level() instanceof ServerLevel serverLevel) {
++            this.handlePortal(serverLevel);
++            if ((this.isAlive() || this.forceTickAfterTeleportToDuplicate)) {
+                 BlockPos blockPos = this.blockPosition();
+                 boolean flag = this.blockState.getBlock() instanceof ConcretePowderBlock;
+-                boolean flag1 = flag && this.level().getFluidState(blockPos).is(FluidTags.WATER);
++                boolean flag1 = flag && serverLevel.getFluidState(blockPos).is(FluidTags.WATER);
+                 double d = this.getDeltaMovement().lengthSqr();
+                 if (flag && d > 1.0) {
+-                    BlockHitResult blockHitResult = this.level()
++                    BlockHitResult blockHitResult = serverLevel
+                         .clip(
+                             new ClipContext(
+                                 new Vec3(this.xo, this.yo, this.zo), this.position(), ClipContext.Block.COLLIDER, ClipContext.Fluid.SOURCE_ONLY, this
+                             )
+                         );
+-                    if (blockHitResult.getType() != HitResult.Type.MISS && this.level().getFluidState(blockHitResult.getBlockPos()).is(FluidTags.WATER)) {
++                    if (blockHitResult.getType() != HitResult.Type.MISS && serverLevel.getFluidState(blockHitResult.getBlockPos()).is(FluidTags.WATER)) {
+                         blockPos = blockHitResult.getBlockPos();
+                         flag1 = true;
+                     }
+                 }
+ 
+                 if (!this.onGround() && !flag1) {
+-                    if ((this.time > 100 && autoExpire) && (blockPos.getY() <= this.level().getMinY() || blockPos.getY() > this.level().getMaxY()) || (this.time > 600 && autoExpire)) { // Paper - Expand FallingBlock API
++                    if ((this.time > 100 && autoExpire) && (blockPos.getY() <= serverLevel.getMinY() || blockPos.getY() > serverLevel.getMaxY()) || (this.time > 600 && autoExpire)) { // Paper - Expand FallingBlock API
+                         if (this.dropItem && serverLevel.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                             this.spawnAtLocation(serverLevel, block);
+                         }
+@@ -190,18 +192,18 @@ public class FallingBlockEntity extends Entity {
+                         this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
+                     }
+                 } else {
+-                    BlockState blockState = this.level().getBlockState(blockPos);
++                    BlockState blockState = serverLevel.getBlockState(blockPos);
+                     this.setDeltaMovement(this.getDeltaMovement().multiply(0.7, -0.5, 0.7));
+                     if (!blockState.is(Blocks.MOVING_PISTON)) {
+                         if (!this.cancelDrop) {
+                             boolean canBeReplaced = blockState.canBeReplaced(
+-                                new DirectionalPlaceContext(this.level(), blockPos, Direction.DOWN, ItemStack.EMPTY, Direction.UP)
++                                new DirectionalPlaceContext(serverLevel, blockPos, Direction.DOWN, ItemStack.EMPTY, Direction.UP)
+                             );
+-                            boolean flag2 = FallingBlock.isFree(this.level().getBlockState(blockPos.below())) && (!flag || !flag1);
+-                            boolean flag3 = this.blockState.canSurvive(this.level(), blockPos) && !flag2;
++                            boolean flag2 = FallingBlock.isFree(serverLevel.getBlockState(blockPos.below())) && (!flag || !flag1);
++                            boolean flag3 = this.blockState.canSurvive(serverLevel, blockPos) && !flag2;
+                             if (canBeReplaced && flag3) {
+                                 if (this.blockState.hasProperty(BlockStateProperties.WATERLOGGED)
+-                                    && this.level().getFluidState(blockPos).getType() == Fluids.WATER) {
++                                    && serverLevel.getFluidState(blockPos).getType() == Fluids.WATER) {
+                                     this.blockState = this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
+                                 }
+ 
+@@ -211,8 +213,8 @@ public class FallingBlockEntity extends Entity {
+                                     return;
+                                 }
+                                 // CraftBukkit end
+-                                if (this.level().setBlock(blockPos, this.blockState, 3)) {
+-                                    ((ServerLevel)this.level())
++                                if (serverLevel.setBlock(blockPos, this.blockState, 3)) {
++                                    serverLevel
+                                         .getChunkSource()
+                                         .chunkMap
+                                         .broadcast(this, new ClientboundBlockUpdatePacket(blockPos, this.level().getBlockState(blockPos)));
+@@ -255,6 +257,8 @@ public class FallingBlockEntity extends Entity {
+                     }
+                 }
+             }
++            }
++            // fluxent end - remove duplicate code
+ 
+             this.setDeltaMovement(this.getDeltaMovement().scale(0.98));
+         }
+diff --git a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java
+index 5d23d8754b304d5e2fd54400cc81c7fe5c14a804..ca505afb73b0b55276b33294236ed224f0991e42 100644
+--- a/net/minecraft/world/entity/item/PrimedTnt.java
++++ b/net/minecraft/world/entity/item/PrimedTnt.java
+@@ -102,7 +102,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
+     @Override
+     public void tick() {
+         if (this.level().spigotConfig.maxTntTicksPerTick > 0 && ++this.level().spigotConfig.currentPrimedTnt > this.level().spigotConfig.maxTntTicksPerTick) { return; } // Spigot
+-        this.handlePortal();
++        if(level() instanceof ServerLevel serverLevel) this.handlePortal(serverLevel); // fluxent - remove duplicate code
+         this.applyGravity();
+         this.move(MoverType.SELF, this.getDeltaMovement());
+         this.applyEffectsFromBlocks();
+diff --git a/net/minecraft/world/entity/projectile/AbstractArrow.java b/net/minecraft/world/entity/projectile/AbstractArrow.java
+index 595cdb7d013eb0b9282b133a22f51ee865d18623..001a43ee83afd6d66215605564b9edf3410edcf6 100644
+--- a/net/minecraft/world/entity/projectile/AbstractArrow.java
++++ b/net/minecraft/world/entity/projectile/AbstractArrow.java
+@@ -283,7 +283,7 @@ public abstract class AbstractArrow extends Projectile {
+             this.setPos(location);
+             this.applyEffectsFromBlocks(vec3, location);
+             if (this.portalProcess != null && this.portalProcess.isInsidePortalThisTick()) {
+-                this.handlePortal();
++                if(level() instanceof ServerLevel serverLevel) this.handlePortal(serverLevel); // fluxent - remove duplicate code
+             }
+ 
+             if (entityHitResult == null) {
+diff --git a/net/minecraft/world/entity/projectile/ShulkerBullet.java b/net/minecraft/world/entity/projectile/ShulkerBullet.java
+index 0789b9b6904ae07d80a828ef18632fb3093cc3cc..918e86b53f21b9a7f9b9b1fa63c9274469f354fb 100644
+--- a/net/minecraft/world/entity/projectile/ShulkerBullet.java
++++ b/net/minecraft/world/entity/projectile/ShulkerBullet.java
+@@ -236,7 +236,7 @@ public class ShulkerBullet extends Projectile {
+         this.setPos(this.position().add(deltaMovement));
+         this.applyEffectsFromBlocks();
+         if (this.portalProcess != null && this.portalProcess.isInsidePortalThisTick()) {
+-            this.handlePortal();
++            if(level() instanceof ServerLevel serverLevel) this.handlePortal(serverLevel); // fluxent - remove duplicate code
+         }
+ 
+         if (hitResult != null && this.isAlive() && hitResult.getType() != HitResult.Type.MISS) {
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 4e7c2c2aa3421d5b5b0a5ee16ae90827b0061584..faa939a3d0835a85bb4647de02edf10d8252f3c9 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -841,7 +841,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         this.spigotConfig = new org.spigotmc.SpigotWorldConfig(((net.minecraft.world.level.storage.PrimaryLevelData) levelData).getLevelName()); // Spigot
+         this.paperConfig = paperWorldConfigCreator.apply(this.spigotConfig); // Paper - create paper world config
+         this.generator = generator;
+-        this.world = new CraftWorld((ServerLevel) this, generator, biomeProvider, environment);
++        ServerLevel serverLevel = (ServerLevel) this; // fluxent - remove duplicate code
++        this.world = new CraftWorld(serverLevel, generator, biomeProvider, environment);
+ 
+         for (SpawnCategory spawnCategory : SpawnCategory.values()) {
+             if (org.bukkit.craftbukkit.util.CraftSpawnCategory.isValidForLimits(spawnCategory)) {
+@@ -878,7 +879,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+         this.damageSources = new DamageSources(registryAccess);
+ 
+         // CraftBukkit start
+-        this.getWorldBorder().world = (ServerLevel) this;
++        this.getWorldBorder().world = serverLevel; // fluxent - remove duplicate code
+         // From PlayerList.setPlayerFileData
+         this.getWorldBorder().addListener(new net.minecraft.world.level.border.BorderChangeListener() {
+             @Override
+@@ -1242,7 +1243,8 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+             // it doesn't imply destruction of a block that plays a sound effect / drops an item.
+             boolean playEffect = true;
+             BlockState effectType = blockState;
+-            int xp = blockState.getBlock().getExpDrop(blockState, (ServerLevel) this, pos, ItemStack.EMPTY, true);
++            ServerLevel serverLevel = (ServerLevel) this; // fluxent - remove duplicate code
++            int xp = blockState.getBlock().getExpDrop(blockState, serverLevel, pos, ItemStack.EMPTY, true); // fluxent - remove duplicate code
+             if (com.destroystokyo.paper.event.block.BlockDestroyEvent.getHandlerList().getRegisteredListeners().length > 0) {
+                 com.destroystokyo.paper.event.block.BlockDestroyEvent event = new com.destroystokyo.paper.event.block.BlockDestroyEvent(org.bukkit.craftbukkit.block.CraftBlock.at(this, pos), fluidState.createLegacyBlock().createCraftBlockData(), effectType.createCraftBlockData(), xp, dropBlock);
+                 if (!event.callEvent()) {
+@@ -1261,7 +1263,7 @@ public abstract class Level implements LevelAccessor, UUIDLookup<Entity>, AutoCl
+             if (dropBlock) {
+                 BlockEntity blockEntity = blockState.hasBlockEntity() ? this.getBlockEntity(pos) : null;
+                 Block.dropResources(blockState, this, pos, blockEntity, entity, ItemStack.EMPTY, false); // Paper - Properly handle xp dropping
+-                blockState.getBlock().popExperience((ServerLevel) this, pos, xp, entity); // Paper - Properly handle xp dropping; custom amount
++                blockState.getBlock().popExperience(serverLevel, pos, xp, entity); // Paper - Properly handle xp dropping; custom amount // fluxent - remove duplicate code
+             }
+ 
+             boolean flag = this.setBlock(pos, fluidState.createLegacyBlock(), 3, recursionLeft);
+diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
+index d0074b398730194eda08e8acd9b398ee08fba624..66c1e05818883bea08c3338ffcdff1d0d021f12c 100644
+--- a/net/minecraft/world/level/block/Block.java
++++ b/net/minecraft/world/level/block/Block.java
+@@ -355,9 +355,11 @@ public class Block extends BlockBehaviour implements ItemLike {
+     // Paper end - Add BlockBreakBlockEvent
+ 
+     public static void dropResources(BlockState state, Level level, BlockPos pos) {
+-        if (level instanceof ServerLevel) {
+-            getDrops(state, (ServerLevel)level, pos, null).forEach(stack -> popResource(level, pos, stack));
+-            state.spawnAfterBreak((ServerLevel)level, pos, ItemStack.EMPTY, true);
++        // fluxent start - remove duplicate code
++        if (level instanceof ServerLevel serverLevel) {
++            getDrops(state, serverLevel, pos, null).forEach(stack -> popResource(level, pos, stack));
++            state.spawnAfterBreak(serverLevel, pos, ItemStack.EMPTY, true);
++        // fluxent end - remove duplicate code
+         }
+     }
+ 

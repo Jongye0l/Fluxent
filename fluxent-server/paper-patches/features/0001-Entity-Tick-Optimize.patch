@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jongyeol <bcpjy1233@gmail.com>
+Date: Sun, 8 Jun 2025 20:16:53 +0900
+Subject: [PATCH] Entity Tick Optimize
+
+
+diff --git a/src/main/java/org/spigotmc/SpigotWorldConfig.java b/src/main/java/org/spigotmc/SpigotWorldConfig.java
+index 43c6240ec2855c0f668ce04de29d22a223d2612f..f2ef3d0214184597a75e006e46eb5e80a76e8575 100644
+--- a/src/main/java/org/spigotmc/SpigotWorldConfig.java
++++ b/src/main/java/org/spigotmc/SpigotWorldConfig.java
+@@ -168,6 +168,7 @@ public class SpigotWorldConfig {
+         if (this.simulationDistance <= 0) {
+             this.simulationDistance = Bukkit.getSimulationDistance();
+         }
++        setupEntityMaxRange(); // fluxent - entity level tick optimize
+ 
+         this.log("Simulation Distance: " + this.simulationDistance);
+     }
+@@ -208,6 +209,7 @@ public class SpigotWorldConfig {
+     public boolean villagersActiveForPanic = true;
+     public boolean tickInactiveVillagers = true;
+     public boolean ignoreSpectatorActivation = false;
++    public int entityMaxRange; // fluxent - entity level tick optimize
+ 
+     private void activationRange() {
+         boolean hasAnimalsConfig = config.getInt("entity-activation-range.animals", this.animalActivationRange) != this.animalActivationRange; // Paper
+@@ -218,6 +220,7 @@ public class SpigotWorldConfig {
+         this.waterActivationRange = this.getInt("entity-activation-range.water", this.waterActivationRange);
+         this.villagerActivationRange = this.getInt("entity-activation-range.villagers", hasAnimalsConfig ? this.animalActivationRange : this.villagerActivationRange);
+         this.flyingMonsterActivationRange = this.getInt("entity-activation-range.flying-monsters", this.flyingMonsterActivationRange);
++        setupEntityMaxRange(); // fluxent - entity level tick optimize
+ 
+         this.wakeUpInactiveAnimals = this.getInt("entity-activation-range.wake-up-inactive.animals-max-per-tick", this.wakeUpInactiveAnimals);
+         this.wakeUpInactiveAnimalsEvery = this.getInt("entity-activation-range.wake-up-inactive.animals-every", this.wakeUpInactiveAnimalsEvery);
+@@ -243,6 +246,19 @@ public class SpigotWorldConfig {
+         this.log("Entity Activation Range: An " + this.animalActivationRange + " / Mo " + this.monsterActivationRange + " / Ra " + this.raiderActivationRange + " / Mi " + this.miscActivationRange + " / Tiv " + this.tickInactiveVillagers + " / Isa " + this.ignoreSpectatorActivation);
+     }
+ 
++    // fluxent start - entity level tick optimize
++    public final void setupEntityMaxRange() {
++        int maxRange = Math.max(monsterActivationRange, animalActivationRange);
++        maxRange = Math.max(maxRange, raiderActivationRange);
++        maxRange = Math.max(maxRange, miscActivationRange);
++        maxRange = Math.max(maxRange, flyingMonsterActivationRange);
++        maxRange = Math.max(maxRange, waterActivationRange);
++        maxRange = Math.max(maxRange, villagerActivationRange);
++        maxRange = Math.min((simulationDistance << 4) - 8, maxRange);
++        entityMaxRange = maxRange;
++    }
++    // fluxent end - entity level tick optimize
++
+     public int playerTrackingRange = 128;
+     public int animalTrackingRange = 96;
+     public int monsterTrackingRange = 96;

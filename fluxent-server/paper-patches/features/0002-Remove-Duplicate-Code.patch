@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jongyeol <bcpjy1233@gmail.com>
+Date: Mon, 9 Jun 2025 20:42:42 +0900
+Subject: [PATCH] Remove Duplicate Code
+
+
+diff --git a/src/main/java/org/spigotmc/WatchdogThread.java b/src/main/java/org/spigotmc/WatchdogThread.java
+index c77748061f1c8bb2b0dc8dbd80f608d431752015..3b71561a6dd8fbe7126ddd6447a0ab3bce9a31e6 100644
+--- a/src/main/java/org/spigotmc/WatchdogThread.java
++++ b/src/main/java/org/spigotmc/WatchdogThread.java
+@@ -47,8 +47,10 @@ public class WatchdogThread extends ca.spottedleaf.moonrise.common.util.TickThre
+         }
+     }
+ 
+-    public static void tick() {
+-        WatchdogThread.instance.lastTick = WatchdogThread.monotonicMillis();
++    // fluxent start - remove duplicate code
++    public static void tick(long nanos) {
++        WatchdogThread.instance.lastTick = nanos / 1000000L;
++    // fluxent end - remove duplicate code
+     }
+ 
+     public static void doStop() {

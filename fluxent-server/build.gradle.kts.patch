@@ -49,10 +49,10 @@
      implementation("ca.spottedleaf:concurrentutil:0.0.3")
      implementation("org.jline:jline-terminal-ffm:3.27.1") // use ffm on java 22+
      implementation("org.jline:jline-terminal-jni:3.27.1") // fall back to jni on java 21
-@@ -290,7 +290,7 @@
+@@ -267,7 +290,7 @@
      jvmArgumentProviders.add(provider)
  }
-
+ 
 -val generatedDir: java.nio.file.Path = layout.projectDirectory.dir("src/generated/java").asFile.toPath()
 +val generatedDir: java.nio.file.Path = layout.projectDirectory.dir("../paper-server/src/generated/java").asFile.toPath()
  idea {

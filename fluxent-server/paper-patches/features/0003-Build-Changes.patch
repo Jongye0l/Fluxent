@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Mon, 9 Jun 2025 21:47:31 +0900
+Date: Tue, 10 Jun 2025 20:22:19 +0900
 Subject: [PATCH] Build Changes
 
 
@@ -68,3 +68,16 @@ index 790bad0494454ca12ee152e3de6da3da634d9b20..9c84742de78336708095dbd55b399a5e
              SharedConstants.getCurrentVersion().getId(),
              SharedConstants.getCurrentVersion().getName(),
              getManifestAttribute(manifest, ATTRIBUTE_BUILD_NUMBER)
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+index 774556a62eb240da42e84db4502e2ed43495be17..e65a2ea7c4023e2f0b3e5f904686660ee254e21e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+@@ -11,7 +11,7 @@ public final class Versioning {
+     public static String getBukkitVersion() {
+         String result = "Unknown-Version";
+ 
+-        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/io.papermc.paper/paper-api/pom.properties");
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/kr.jongyeol.fluxent/fluxent-api/pom.properties");
+         Properties properties = new Properties();
+ 
+         if (stream != null) {

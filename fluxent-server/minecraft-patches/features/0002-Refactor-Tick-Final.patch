@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Thu, 12 Jun 2025 13:56:41 +0900
+Date: Thu, 12 Jun 2025 23:18:29 +0900
 Subject: [PATCH] Refactor Tick Final
 
 
@@ -116,6 +116,19 @@ index 13e2e5340b34af2ccde0b1c080189e99378315c3..8e736581f48ea892ba2af66476d7e88d
                      }
                  }
              }
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..38189cd2323e103a87bec6ede9e0c7c33f80f1ee 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -186,7 +186,7 @@ import net.minecraft.world.scores.Team;
+ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
+ import org.slf4j.Logger;
+ 
+-public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patches.chunk_system.player.ChunkSystemServerPlayer { // Paper - rewrite chunk system
++public final class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patches.chunk_system.player.ChunkSystemServerPlayer { // Paper - rewrite chunk system
+     private static final Logger LOGGER = LogUtils.getLogger();
+     public long lastSave = MinecraftServer.currentTick; // Paper - Incremental chunk and player saving
+     private static final int NEUTRAL_MOB_DEATH_NOTIFICATION_RADII_XZ = 32;
 diff --git a/net/minecraft/server/players/SleepStatus.java b/net/minecraft/server/players/SleepStatus.java
 index 2a7ae521654ad5c9f392baa5562e64bb71b13097..ff114230c93fe606519d8043b7fe8fc06473bf6d 100644
 --- a/net/minecraft/server/players/SleepStatus.java

@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Thu, 12 Jun 2025 13:57:05 +0900
+Date: Thu, 12 Jun 2025 23:20:47 +0900
 Subject: [PATCH] Remove Duplicate Code
 
 
@@ -54,7 +54,7 @@ index 975a2e4ea1f84e81fa3526395b43cb8157a06243..0c77422c571fc71f9cd975b5e3d35083
  
      @Override
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index f1373fd5fdebb9f4600ba7f32a5df6188de3a0e9..b77153e10bd1aaddb01f1675fa58dca3e395cebb 100644
+index f1373fd5fdebb9f4600ba7f32a5df6188de3a0e9..6d6c17901dd22541e82f0f0c668d508381d06edf 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -1177,7 +1177,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -78,6 +78,19 @@ index f1373fd5fdebb9f4600ba7f32a5df6188de3a0e9..b77153e10bd1aaddb01f1675fa58dca3
          int i = this.pauseWhileEmptySeconds() * 20;
          this.removeDisabledPluginsBlockingSleep(); // Paper - API to allow/disallow tick sleeping
          if (i > 0) {
+@@ -1688,10 +1690,10 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             long worldTime = level.getGameTime();
+             final ClientboundSetTimePacket worldPacket = new ClientboundSetTimePacket(worldTime, dayTime, doDaylight);
+             for (Player entityhuman : level.players()) {
+-                if (!(entityhuman instanceof ServerPlayer) || (tickCount + entityhuman.getId()) % 20 != 0) {
++                if (!(entityhuman instanceof ServerPlayer entityplayer) || (tickCount + entityhuman.getId()) % 20 != 0) { // fluxent - remove duplicate code
+                     continue;
+                 }
+-                ServerPlayer entityplayer = (ServerPlayer) entityhuman;
++                // fluxent - remove duplicate code
+                 long playerTime = entityplayer.getPlayerTime();
+                 boolean relativeTime = entityplayer.relativeTime;
+                 ClientboundSetTimePacket packet = ((relativeTime || !doDaylight) && playerTime == dayTime) ? worldPacket :
 diff --git a/net/minecraft/server/commands/RaidCommand.java b/net/minecraft/server/commands/RaidCommand.java
 index a40300ff8c63cbfb3bcd1109b6374d7fb6bcf4e9..5be44843f710e9ba87828a4d8293bcdb6ae20771 100644
 --- a/net/minecraft/server/commands/RaidCommand.java
@@ -147,10 +160,10 @@ index 8e736581f48ea892ba2af66476d7e88d8426b520..43d991d95da16afd9f6e6665d6ab8a2c
  
      public double getGlobalSoundRangeSquared(java.util.function.Function<org.spigotmc.SpigotWorldConfig, Integer> rangeFunction) {
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605c7aa813e 100644
+index 38189cd2323e103a87bec6ede9e0c7c33f80f1ee..2d4ecf30ef700ef2ad7a620d658239c757e3ddaa 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1011,13 +1011,14 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1011,13 +1011,14 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
      @Override
      public void die(DamageSource cause) {
          // this.gameEvent(GameEvent.ENTITY_DIE); // Paper - move below event cancellation check
@@ -167,7 +180,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
          if (!keepInventory) {
              for (ItemStack item : this.getInventory().getContents()) {
                  if (!item.isEmpty() && !EnchantmentHelper.has(item, net.minecraft.world.item.enchantment.EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) {
-@@ -1025,9 +1026,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1025,9 +1026,9 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
                  }
              }
          }
@@ -179,7 +192,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
              // Paper - Restore vanilla drops behaviour; custom death loot is a noop on server player, remove.
              loot.addAll(this.drops);
              this.drops.clear(); // SPIGOT-5188: make sure to clear
-@@ -1075,12 +1076,12 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1075,12 +1076,12 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
          }
  
          this.removeEntitiesOnShoulder();
@@ -194,7 +207,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
          // we clean the player's inventory after the EntityDeathEvent is called so plugins can get the exact state of the inventory.
          if (!event.getKeepInventory()) {
              // Paper start - PlayerDeathEvent#getItemsToKeep
-@@ -1107,7 +1108,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1107,7 +1108,7 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
          this.setCamera(this); // Remove spectated target
          // CraftBukkit end
  
@@ -203,7 +216,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
          LivingEntity killCredit = this.getKillCredit();
          if (killCredit != null) {
              this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
-@@ -1115,7 +1116,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1115,7 +1116,7 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
              this.createWitherRose(killCredit);
          }
  
@@ -212,7 +225,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
          this.awardStat(Stats.DEATHS);
          this.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_DEATH));
          this.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_REST));
-@@ -1123,7 +1124,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1123,7 +1124,7 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
          this.setTicksFrozen(0);
          this.setSharedFlagOnFire(false);
          this.getCombatTracker().recheckStatus();
@@ -221,7 +234,7 @@ index 3781d9cc174b7aecacb9b9855d52c7b1ff05835c..00745cf4e07a7483306f6000938b5605
          this.setClientLoaded(false);
      }
  
-@@ -1327,8 +1328,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1327,8 +1328,8 @@ public final class ServerPlayer extends Player implements ca.spottedleaf.moonris
              org.bukkit.Location exit = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(absolutePosition.position(), level.getWorld(), absolutePosition.yRot(), absolutePosition.xRot());
              org.bukkit.event.player.PlayerTeleportEvent tpEvent = new org.bukkit.event.player.PlayerTeleportEvent(this.getBukkitEntity(), enter, exit.clone(), teleportTransition.cause());
              // Paper start - gateway-specific teleport event

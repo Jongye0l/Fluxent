@@ -91,6 +91,15 @@ index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..816461fa459567aaadba40699549ad2d
                          if (!entity.isRemoved()) {
                              if (!tickRateManager.isEntityFrozen(entity)) {
                                  profilerFiller.push("checkDespawn");
+@@ -799,7 +799,7 @@
+                                     Entity vehicle = entity.getVehicle();
+                                     if (vehicle != null) {
+                                         if (!vehicle.isRemoved() && vehicle.hasPassenger(entity)) {
+-                                            return;
++                                            continue; // fluxent - entity level tick optimize
+                                         }
+ 
+                                         entity.stopRiding();
 @@ -809,8 +811,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                                  }
                              }

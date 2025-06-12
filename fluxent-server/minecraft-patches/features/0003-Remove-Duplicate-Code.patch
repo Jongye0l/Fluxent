@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Mon, 9 Jun 2025 20:42:40 +0900
+Date: Thu, 12 Jun 2025 13:57:05 +0900
 Subject: [PATCH] Remove Duplicate Code
 
 
@@ -98,7 +98,7 @@ index a40300ff8c63cbfb3bcd1109b6374d7fb6bcf4e9..5be44843f710e9ba87828a4d8293bcdb
              if (raid != null) {
                  raid.setRaidOmenLevel(badOmenLevel);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 2a19aa059e00a620b2b25fddeb42744f0cf79164..d4e5404c50bc47fb5103215b939b470a883fa2c2 100644
+index 8e736581f48ea892ba2af66476d7e88d8426b520..43d991d95da16afd9f6e6665d6ab8a2c6935a9e3 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -524,7 +524,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
@@ -128,7 +128,7 @@ index 2a19aa059e00a620b2b25fddeb42744f0cf79164..d4e5404c50bc47fb5103215b939b470a
              .chunkHolderManager.getChunkHolder(chunkKey);
  
          if (chunkHolder == null || !chunkHolder.isTickingReady()) {
-@@ -873,7 +873,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+@@ -886,7 +886,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
  
      private void optimiseRandomTick(final LevelChunk chunk, final int tickSpeed) {
          final LevelChunkSection[] sections = chunk.getSections();
@@ -137,7 +137,7 @@ index 2a19aa059e00a620b2b25fddeb42744f0cf79164..d4e5404c50bc47fb5103215b939b470a
          final ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom simpleRandom = this.simpleRandom;
          final boolean doubleTickFluids = !ca.spottedleaf.moonrise.common.PlatformHooks.get().configFixMC224294();
  
-@@ -2555,7 +2555,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
+@@ -2568,7 +2568,7 @@ public final class ServerLevel extends Level implements ServerEntityGetter, Worl
  
      // Paper start - respect global sound events gamerule
      public List<net.minecraft.server.level.ServerPlayer> getPlayersForGlobalSoundGamerule() {

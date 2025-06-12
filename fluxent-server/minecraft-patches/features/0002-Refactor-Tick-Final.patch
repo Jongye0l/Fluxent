@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Sun, 8 Jun 2025 21:42:18 +0900
+Date: Thu, 12 Jun 2025 13:56:41 +0900
 Subject: [PATCH] Refactor Tick Final
 
 
@@ -18,7 +18,7 @@ index 59e8a5e1b35c81883c9b1ca00c6e55d77584d8cc..9774276c337768b6c3425bc63b6e247d
      private final DistanceManager distanceManager;
      private final ServerLevel level;
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 816461fa459567aaadba40699549ad2d8d18f231..2a19aa059e00a620b2b25fddeb42744f0cf79164 100644
+index 13e2e5340b34af2ccde0b1c080189e99378315c3..8e736581f48ea892ba2af66476d7e88d8426b520 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -165,7 +165,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
@@ -87,7 +87,7 @@ index 816461fa459567aaadba40699549ad2d8d18f231..2a19aa059e00a620b2b25fddeb42744f
          // Paper end - rewrite chunk system
          this.getCraftServer().addWorld(this.getWorld()); // CraftBukkit
      }
-@@ -859,7 +859,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -872,7 +872,13 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
  
      private void wakeUpAllPlayers() {
          this.sleepStatus.removeAllSleepers();
@@ -102,7 +102,7 @@ index 816461fa459567aaadba40699549ad2d8d18f231..2a19aa059e00a620b2b25fddeb42744f
      }
  
      // Paper start - optimise random ticking
-@@ -900,11 +906,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -913,11 +919,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                  // do not use a mutable pos, as some random tick implementations store the input without calling immutable()!
                  final BlockPos pos = new BlockPos((location & 15) | offsetX, ((location >>> (4 + 4)) & 15) | offsetY, ((location >>> 4) & 15) | offsetZ);
  

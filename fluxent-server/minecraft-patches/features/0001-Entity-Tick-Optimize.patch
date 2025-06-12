@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Sun, 8 Jun 2025 20:16:52 +0900
+Date: Thu, 12 Jun 2025 13:56:00 +0900
 Subject: [PATCH] Entity Tick Optimize
 
 
@@ -55,7 +55,7 @@ index 2ebee223085fe7926c7f3e555df19ae69f36157e..8c608b42ff9d9a0f385a3aa6ac090883
              }
  
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..816461fa459567aaadba40699549ad2d8d18f231 100644
+index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..13e2e5340b34af2ccde0b1c080189e99378315c3 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -133,7 +133,6 @@ import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
@@ -91,7 +91,7 @@ index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..816461fa459567aaadba40699549ad2d
                          if (!entity.isRemoved()) {
                              if (!tickRateManager.isEntityFrozen(entity)) {
                                  profilerFiller.push("checkDespawn");
-@@ -799,7 +799,7 @@
+@@ -797,20 +799,37 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
                                      Entity vehicle = entity.getVehicle();
                                      if (vehicle != null) {
                                          if (!vehicle.isRemoved() && vehicle.hasPassenger(entity)) {
@@ -100,7 +100,25 @@ index bfbfbaa9660d21071c420b60b10be0a02a1bc87e..816461fa459567aaadba40699549ad2d
                                          }
  
                                          entity.stopRiding();
-@@ -809,8 +811,12 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                                     }
+ 
+                                     profilerFiller.push("tick");
+-                                    this.guardEntityTick(this::tickNonPassenger, entity);
++                                    // fluxent start - entity level tick optimize
++                                    // this.guardEntityTick(this::tickNonPassenger, entity);
++                                    try {
++                                        this.tickNonPassenger(entity);
++                                    } catch (Throwable var6) {
++                                        // Paper start - Prevent block entity and entity crashes
++                                        final String msg = String.format("Entity threw exception at %s:%s,%s,%s", entity.level().getWorld().getName(), entity.getX(), entity.getY(), entity.getZ());
++                                        MinecraftServer.LOGGER.error(msg, var6);
++                                        getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, var6))); // Paper - ServerExceptionEvent
++                                        entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
++                                        // Paper end - Prevent block entity and entity crashes
++                                    }
++                                    this.moonrise$midTickTasks(); // Paper - rewrite chunk system
++                                    // fluxent end - entity level tick optimize
+                                     profilerFiller.pop();
                                  }
                              }
                          }

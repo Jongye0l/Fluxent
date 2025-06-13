@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jongyeol <bcpjy1233@gmail.com>
-Date: Thu, 12 Jun 2025 23:20:47 +0900
+Date: Fri, 13 Jun 2025 23:35:26 +0900
 Subject: [PATCH] Remove Duplicate Code
 
 
@@ -989,6 +989,19 @@ index c1c63c77598786d86b4aa4475cc4d36e60955085..2a9402de42cee21f07f38d801a559c10
                      this.blocksSetOnFire++;
                  }
                  // CraftBukkit end
+diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
+index 73ba442b9d39bc021cd5eb6c1c0f98aed94a5a02..4b9789bc85a4a645e7ee6cde6882fa072fdd52b7 100644
+--- a/net/minecraft/world/entity/Mob.java
++++ b/net/minecraft/world/entity/Mob.java
+@@ -498,7 +498,7 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
+             && serverLevel.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) {
+             Vec3i pickupReach = this.getPickupReach();
+ 
+-            for (ItemEntity itemEntity : this.level()
++            for (ItemEntity itemEntity : serverLevel // fluxent - remove duplicate code
+                 .getEntitiesOfClass(ItemEntity.class, this.getBoundingBox().inflate(pickupReach.getX(), pickupReach.getY(), pickupReach.getZ()))) {
+                 if (!itemEntity.isRemoved()
+                     && !itemEntity.getItem().isEmpty()
 diff --git a/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java b/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java
 index 3d40911970caf6f1de2a1ebee1df4c077703226a..691af09519fbb49293168b99cd51c2f6feb42411 100644
 --- a/net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java
